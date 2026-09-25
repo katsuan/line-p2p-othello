@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isRoomDocument() {
+      return request.resource.data.roomId is string
+        && request.resource.data.hostUserId is string
+        && request.resource.data.hostPeerId is string
+        && request.resource.data.guestUserId is string
+        && request.resource.data.guestPeerId is string
+        && request.resource.data.status in ['waiting', 'ready', 'playing'];
+    }
+
+    // このデモはクライアント側の LIFF ID を使う構成で、Firebase Auth は前提にしていません。
+    // そのため認可よりも、ルームデータの構造検証を優先しています。
+    match /rooms/{roomId} {
+      allow read: if true;
+      allow create, update: if isRoomDocument();
+      allow delete: if false;
+    }
+  }
+}
