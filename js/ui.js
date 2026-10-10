@@ -1056,7 +1056,10 @@
           if (!cellValue && app.rules.mode === "quiz" && app.matchConfigured) {
             var mark = documentRef.createElement("span");
             mark.className = "cell-mark";
-            mark.textContent = window.OthelloQuiz.questionAt(app.rules, app.quizAttempts, app.quizRetries, row, col).mark || "";
+            // 4隅は取り合いになる大事なマスなので、問題の手がかりを出さず「？」にする
+            var isCorner = (row === 0 || row === boardSize - 1) && (col === 0 || col === boardSize - 1);
+            mark.textContent = isCorner ? "？" :
+              (window.OthelloQuiz.questionAt(app.rules, app.quizAttempts, app.quizRetries, row, col).mark || "");
             button.appendChild(mark);
           }
 
