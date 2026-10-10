@@ -830,3 +830,41 @@
   justify-self: center;
   font-size: 0.85rem;
 }
+
+/* 教養モード：空いているマスに出す問題の1文字 */
+.cell-mark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: clamp(12px, 4.2vw, 22px);
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* 置けるマスの1文字ははっきり見せる */
+.cell.valid .cell-mark {
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.cell.opponent-valid .cell-mark {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* 教養モードの対局中は、置けるマスの点の代わりに枠を光らせる（1文字と重ならないように） */
+.board.is-quiz .cell.valid::after,
+.board.is-quiz .cell.opponent-valid::after {
+  display: none;
+}
+
+.board.is-quiz .cell.valid {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 2px rgba(255, 214, 102, 0.95);
+}
+
+.board.is-quiz .cell.opponent-valid {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+}

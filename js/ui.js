@@ -575,6 +575,7 @@
           createBoardElements(elements.board, boardClickHandler, boardSize);
         }
         var buttons = elements.board.querySelectorAll(".cell");
+        elements.board.classList.toggle("is-quiz", app.rules.mode === "quiz" && app.matchConfigured);
         var validMoves = Game.getValidMoves(app.game.board, app.game.currentTurn);
         var validMap = Game.getMoveMap(validMoves);
         var counts = Game.countDiscs(app.game.board);
@@ -797,6 +798,14 @@
 
           button.disabled = !canPlay;
           button.innerHTML = "";
+
+          // 教養モードの対局中は、空いているマスにそのマスの問題の1文字を出す
+          if (!cellValue && app.rules.mode === "quiz" && app.matchConfigured) {
+            var mark = documentRef.createElement("span");
+            mark.className = "cell-mark";
+            mark.textContent = window.OthelloQuiz.markFor(app.rules, row, col, app.quizAttempts[key] || 0);
+            button.appendChild(mark);
+          }
 
           if (cellValue) {
             button.className = "cell";
