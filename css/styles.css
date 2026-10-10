@@ -136,15 +136,31 @@ h1 {
   gap: 8px;
 }
 
+/* 状態（はじめる / 招待中 / ひとりで …）は小さなラベルにして、見出しと同じ行に置く */
+.room-state-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.room-state-label {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(29, 42, 34, 0.07);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .room-state-title {
-  min-height: 2.7em;
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.35;
 }
 
 .room-state-hint {
-  min-height: 3em;
   color: var(--muted);
   font-size: 0.87rem;
   line-height: 1.5;
@@ -161,12 +177,24 @@ h1 {
 }
 
 .room-current-row {
-  display: block;
+  display: flex;
+  flex-wrap: nowrap;
+}
+
+.room-current-row .room-current-id {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-current-row .button-compact {
+  flex: 0 0 auto;
 }
 
 .room-current-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
 }
 
@@ -330,12 +358,28 @@ button:disabled {
     min-height: 0;
   }
 
-  .room-state-title {
-    min-height: 2.7em;
+  /* スマホではヘッダーを詰め、盤面までの距離を短くする */
+  .topbar {
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  h1 {
+    font-size: 1.5rem;
   }
 
   .room-state-hint {
-    min-height: 3em;
+    font-size: 0.82rem;
+  }
+
+  /* 対局中は説明文を省き、状態の1行とメニューだけにする */
+  body.is-playing .room-state-hint {
+    display: none;
+  }
+
+  .room-tools summary {
+    padding: 10px 12px;
+    font-size: 0.82rem;
   }
 
   .field-label {
@@ -343,7 +387,8 @@ button:disabled {
   }
 
   .room-current-row {
-    display: block;
+    display: flex;
+    flex-wrap: nowrap;
   }
 
   .link-row {
@@ -366,7 +411,7 @@ button:disabled {
 
   .room-current-actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
   }
 

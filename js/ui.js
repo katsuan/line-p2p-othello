@@ -304,7 +304,7 @@
       return {
         label: "はじめる",
         title: "だれと遊びますか？",
-        hint: "遊び方を選ぶと、次にルール（ふつう / 📚 教養）を決めて START します。",
+        hint: "遊び方を選ぶと、次に盤面とルール（ふつう / 📚 教養）を決めて START します。",
         toolsSummary: "ルームIDで参加",
         joinLabel: "参加する",
         newRoomLabel: "新しい対局を作る",
@@ -320,7 +320,7 @@
         title: isPlaying && !app.game.winner ? "1台で2人で対局中です。" : "1台で2人で遊びます。",
         hint: isPlaying && !app.game.winner ?
           "手番の人が盤面をタップします。終わったら端末を相手に渡します。" :
-          "下の「対局の準備」でルールを選んで START を押します。黒の人から交代で打ちます。",
+          "下の「対局の準備」で盤面とルールを選んで START を押します。黒の人から交代で打ちます。",
         toolsSummary: "別のルームに参加 / 新しい対局",
         joinLabel: "別のルームに参加",
         newRoomLabel: "別の対局を作る",
@@ -338,7 +338,7 @@
           "このルームを引き継ぎました。相手が戻ると、今の盤面から再開するか選べます。" :
           (isPlaying && !app.game.winner ?
             "続ける時はこのまま、別の対局に移る時だけ下のメニューを使います。" :
-            "下の「対局の準備」でルールを選んで START を押します。"),
+            "下の「対局の準備」で盤面とルールを選んで START を押します。"),
         toolsSummary: "別のルームに参加 / 新しい対局",
         joinLabel: "別のルームに参加",
         newRoomLabel: "別の対局を作る",
@@ -689,6 +689,7 @@
 
         this.setRoomInput(app.roomId);
         documentRef.body.classList.toggle("is-lobby", !app.roomId);
+        documentRef.body.classList.toggle("is-playing", !!app.matchConfigured && !app.game.winner);
         setText(elements.versionBadge, app.appVersion || "dev");
         setText(elements.roomStateLabel, roomFlow.label);
         setText(elements.roomStateTitle, roomFlow.title);
@@ -724,7 +725,7 @@
         }
         setHidden(elements.roomCurrentRow, !roomFlow.showCurrentRoom);
         var isSolo = app.opponentMode === "com";
-        setHidden(elements.roomCurrentActions, !app.roomId || isSolo);
+        setHidden(elements.roomCurrentActions, !app.roomId || isSolo || (roomFlow.showShare && !app.reconnecting));
         if (elements.quickReconnectButton) {
           elements.quickReconnectButton.disabled = !app.roomId;
           setText(elements.quickReconnectButton, app.reconnecting ? "再試行" : "再接続");

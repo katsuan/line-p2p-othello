@@ -19,8 +19,10 @@
       </div>
       <div class="top-actions">
         <div class="room-overview">
-          <div id="roomStateLabel" class="field-label">はじめる</div>
-          <div id="roomStateTitle" class="room-state-title">だれと遊びますか？</div>
+          <div class="room-state-head">
+            <span id="roomStateLabel" class="room-state-label">はじめる</span>
+            <span id="roomStateTitle" class="room-state-title">だれと遊びますか？</span>
+          </div>
           <div id="roomStateHint" class="room-state-hint">友だちとはLINEで招待して対戦します。ひとりならCOMとすぐ練習できます。</div>
           <!-- ルームがないときの主な2つの始め方。ルームIDでの参加は下の折りたたみ（補助的な操作） -->
           <div id="startChoices" class="start-choices">
@@ -42,11 +44,12 @@
             <button id="shareButton" class="button-primary" type="button">LINEで招待</button>
             <div id="roomActionNote" class="room-action-note hidden">このルームでそのまま進めます。</div>
           </div>
+          <!-- ルームIDとコピーは1行に（スマホで縦に場所を取らない） -->
           <div id="roomCurrentRow" class="room-current-row hidden">
             <div id="roomCurrentId" class="room-current-id">room-xxxxxx</div>
+            <button id="copyRoomIdButton" class="button-secondary button-compact" type="button">コピー</button>
           </div>
           <div id="roomCurrentActions" class="button-row room-current-actions hidden">
-            <button id="copyRoomIdButton" class="button-secondary button-compact" type="button">IDをコピー</button>
             <button id="quickReconnectButton" class="button-secondary button-compact" type="button">再接続</button>
           </div>
         </div>
@@ -68,12 +71,25 @@
 
     <section class="board-layout">
       <div class="panel board-shell">
-        <!-- 対局の準備：上から順に「ルール → 問題 → 盤面 → 色 → START」。対戦相手の切り替えは最後に小さく -->
+        <!-- 対局の準備：上から「対戦相手 → 盤面 → ルール（→ 問題）→ 色 → START」。
+             短い選択を先に、教養で広がる問題の一覧を後ろに置き、そのすぐ下で START できるようにする -->
         <div id="hostSetupPanel" class="host-setup-panel hidden">
           <div class="setup-heading">対局の準備</div>
+          <div id="hostSetupOpponentSlot" class="rule-row setup-opponent">
+            <span class="host-setup-label">対戦相手</span>
+            <div class="control-actions">
+              <button id="humanOpponentButton" class="button-chip active" type="button">友だち</button>
+              <button id="comOpponentButton" class="button-chip" type="button">COM</button>
+              <button id="localOpponentButton" class="button-chip" type="button">1台で</button>
+            </div>
+          </div>
           <!-- ルール（ホストが決める）。教養モードは問題に正解すると石を置ける -->
           <div id="ruleSetup" class="rule-setup">
             <p id="rulePostGameNote" class="small rule-post-game hidden">対局が終わりました。ルールを変えると、相手といっしょに次の対局の準備に移ります。</p>
+            <div class="rule-row">
+              <span class="host-setup-label">盤面</span>
+              <div id="sizeChoices" class="control-actions"></div>
+            </div>
             <div class="rule-row">
               <span class="host-setup-label">ルール</span>
               <div class="control-actions">
@@ -86,10 +102,6 @@
               <div class="host-setup-label">問題（いくつでも選べます）</div>
               <!-- ジャンルごとの行に、レベルのボタンを並べる。押すたびに ON/OFF -->
               <div id="pickRows" class="pick-rows"></div>
-            </div>
-            <div class="rule-row">
-              <span class="host-setup-label">盤面</span>
-              <div id="sizeChoices" class="control-actions"></div>
             </div>
           </div>
           <div id="ruleSummary" class="small rule-summary hidden"></div>
@@ -109,16 +121,6 @@
 
           <button id="setupStartButton" class="button-primary setup-start-button hidden" type="button">START</button>
 
-          <div class="host-setup-opponent">
-            <div id="hostSetupOpponentSlot" class="host-setup-slot">
-              <div class="host-setup-label">対戦相手</div>
-              <div class="control-actions">
-                <button id="humanOpponentButton" class="button-chip active" type="button">友だち</button>
-                <button id="comOpponentButton" class="button-chip" type="button">COM</button>
-                <button id="localOpponentButton" class="button-chip" type="button">1台で</button>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div id="ruleBadge" class="rule-badge hidden"></div>
