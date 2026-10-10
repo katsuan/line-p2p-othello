@@ -98,7 +98,15 @@
               </div>
             </div>
             <div id="quizRuleRows" class="hidden">
-              <div class="small host-setup-hint">置けるマスを押すと4択の問題が出ます。正解すると石を置けて、不正解なら相手の番です。</div>
+              <div class="small host-setup-hint">置けるマスを押すと4択の問題が出ます。正解すると石を置けます。不正解のときはライフが減ってもう一度選べ、ライフがなければ相手の番です。石の数が同じなら、ライフが多いほうの勝ちです。</div>
+              <div class="rule-row">
+                <span class="host-setup-label">ライフ</span>
+                <div id="lifeChoices" class="control-actions rule-wrap"></div>
+              </div>
+              <div class="rule-row">
+                <span class="host-setup-label">回答タイム</span>
+                <div id="timeChoices" class="control-actions rule-wrap"></div>
+              </div>
               <div class="host-setup-label">問題（いくつでも選べます）</div>
               <!-- ジャンルごとの行に、レベルのボタンを並べる。押すたびに ON/OFF -->
               <div id="pickRows" class="pick-rows"></div>
@@ -177,7 +185,10 @@
                 <span id="quizWatchTitle">👀 相手が回答中…</span>
                 <button id="quizWatchHide" class="quiz-watch-toggle" type="button">隠す</button>
               </div>
-              <div id="quizGenre" class="quiz-genre"></div>
+              <div class="quiz-meta">
+                <div id="quizGenre" class="quiz-genre"></div>
+                <div id="quizCountdown" class="quiz-countdown hidden" aria-live="off"></div>
+              </div>
               <div id="quizText" class="quiz-text"></div>
               <div id="quizChoices" class="quiz-choices"></div>
               <div id="quizResult" class="quiz-result" aria-live="polite"></div>

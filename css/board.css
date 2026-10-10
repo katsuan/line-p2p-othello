@@ -1018,3 +1018,38 @@
 .quiz-choice .katex {
   font-size: 1.15em;
 }
+
+/* 回答タイムの残り秒数（問題のシートの右上） */
+.quiz-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.quiz-countdown {
+  flex: 0 0 auto;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(29, 42, 34, 0.08);
+  font-size: 0.85rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.quiz-countdown.is-hurry {
+  background: #fbe9e9;
+  color: #c24141;
+}
+
+.quiz-countdown.hidden {
+  display: none;
+}
+
+/* ライフ（カードの名前の横） */
+.player-lives {
+  margin-left: 4px;
+  font-size: 0.8em;
+  letter-spacing: -0.05em;
+  white-space: nowrap;
+}

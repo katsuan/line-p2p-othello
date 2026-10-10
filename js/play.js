@@ -64,7 +64,9 @@
         matchConfigured: app.matchConfigured,
         hostColor: app.currentHostColor || app.desiredHostColor,
         rules: app.rules,
-        quizAttempts: app.quizAttempts
+        quizAttempts: app.quizAttempts,
+        quizRetries: app.quizRetries,
+        quizLives: app.quizLives
       };
     }
 
@@ -124,6 +126,27 @@
     }
 
     // 開始するたびに問題の種を作り直す（再戦でも別の問題になる）
+    var TIME_UP = -2;
+
+    function currentQuestion(row, col) {
+      return Quiz.questionAt(app.rules, app.quizAttempts, app.quizRetries, row, col);
+    }
+
+    // 教養モードで石の数が同じなら、ライフが多く残っているほうの勝ち
+    function applyLifeTiebreak() {
+      if (app.game.winner !== "引き分け" || app.rules.mode !== "quiz" || !app.rules.lives) {
+        return false;
+      }
+      var black = app.quizLives[Game.BLACK] || 0;
+      var white = app.quizLives[Game.WHITE] || 0;
+      if (black === white) {
+        return false;
+      }
+      app.game.winner = black > white ? Game.colorName(Game.BLACK) : Game.colorName(Game.WHITE);
+      app.game.message = "ゲーム終了。石の数は同じですが、ライフが多い" + app.game.winner + "の勝ちです（ライフ " + black + "対" + white + "）。";
+      return true;
+    }
+
     // 石を置く色。1台で2人のときは手番の色、それ以外は自分の色
     function actingColor() {
       return app.localTwoPlayer ? app.game.currentTurn : app.myColor;
@@ -177,7 +200,7 @@
       // 教養モードの COM は、レベルに応じた確率で問題に正解する。
       // 問題 → COM の答え → 結果 の順に見せてから反映する（相手の回答を見る設定のとき）
       var attempt = app.quizAttempts[quizKey(bestMove.row, bestMove.col)] || 0;
-      var question = Quiz.questionFor(app.rules, bestMove.row, bestMove.col, attempt);
+      var question = currentQuestion(bestMove.row, bestMove.col);
       var correct = Math.random() <= Quiz.comAccuracy(question.pick);
       var wrongs = question.choices.map(function (choice, i) { return i; }).filter(function (i) { return i !== question.answer; });
       var watching = {
@@ -266,7 +289,7 @@
       if (!AppPeer.isConnected() || app.opponentMode !== "human" || app.matchConfigured) {
         return;
       }
-      if (!app.localStartReady || !app.remoteStartReady) {
+      if (!app.localStartReady || !app.remoteStartReady || !Quiz.isReady(app.rules)) {
         return;
       }
       if (app.role !== "host") {
@@ -287,6 +310,11 @@
 
     function startMatch() {
       if (app.matchConfigured) {
+        return;
+      }
+      if (!Quiz.isReady(app.rules)) {
+        deps.setMessage("📚 教養モードは、問題を1つ以上選んでから START してください。");
+        deps.render();
         return;
       }
 
@@ -414,6 +442,8 @@
       if (payload.rules) {
         app.rules = Quiz.normalizeRules(payload.rules);
         app.quizAttempts = payload.quizAttempts || {};
+        app.quizRetries = payload.quizRetries || {};
+        app.quizLives = payload.quizLives || deps.freshLives();
       }
       app.quizPrompt = null;
       app.opponentQuiz = null;
@@ -664,6 +694,9 @@
       app.opponentQuiz = null;
       message = Game.resolveTurnAfterMove(app.game, color);
       app.game.message = message;
+      if (applyLifeTiebreak()) {
+        message = app.game.message;
+      }
       app.resultOverlayDismissed = false;
       deps.setMessage(message);
       maybeScheduleComTurn();
@@ -697,14 +730,25 @@
         return;
       }
       var attempt = app.quizAttempts[quizKey(row, col)] || 0;
-      app.quizPrompt = {
+      var prompt = {
         row: row,
         col: col,
         color: color,
         attempt: attempt,
-        question: Quiz.questionFor(app.rules, row, col, attempt),
-        chosen: null
+        question: currentQuestion(row, col),
+        chosen: null,
+        deadline: app.rules.timeLimit ? Date.now() + app.rules.timeLimit * 1000 : 0
       };
+      app.quizPrompt = prompt;
+      // 回答タイム：時間が来たら「時間切れ」（不正解あつかい）
+      deps.stopTimer("quizTimer");
+      if (prompt.deadline) {
+        app.quizTimer = window.setTimeout(function () {
+          if (app.quizPrompt === prompt && prompt.chosen === null) {
+            answerQuiz(TIME_UP);
+          }
+        }, app.rules.timeLimit * 1000);
+      }
       // 相手の画面にも同じ問題を出せるよう、どのマスの何問目かだけ送る（問題は相手側でも同じものが作れる）
       sendQuizProgress({ type: "quiz-open", row: row, col: col, attempt: attempt, version: app.game.version });
       deps.render();
@@ -732,12 +776,17 @@
         return;
       }
       var attempt = Number(data.attempt) || 0;
+      if (attempt !== (app.quizAttempts[quizKey(row, col)] || 0)) {
+        return;
+      }
       app.opponentQuiz = {
         row: row,
         col: col,
         attempt: attempt,
-        question: Quiz.questionFor(app.rules, row, col, attempt),
-        chosen: null
+        color: opponentColor,
+        question: currentQuestion(row, col),
+        chosen: null,
+        deadline: app.rules.timeLimit ? Date.now() + app.rules.timeLimit * 1000 : 0
       };
     }
 
@@ -747,6 +796,7 @@
       if (!prompt || prompt.chosen !== null) {
         return;
       }
+      deps.stopTimer("quizTimer");
       prompt.chosen = Number(index);
       prompt.correct = prompt.chosen === prompt.question.answer;
       sendQuizProgress({ type: "quiz-choice", chosen: prompt.chosen });
@@ -779,10 +829,20 @@
         return false;
       }
       var key = quizKey(row, col);
+      // 次にこのマスで出す問題は、盤面のほかの問題と重ならない位置から選ぶ
+      var nextPosition = Quiz.nextRetryPosition(app.rules, app.game.board, app.quizRetries);
+      app.quizRetries[key] = (app.quizRetries[key] || []).slice(0, app.quizAttempts[key] || 0).concat([nextPosition]);
       app.quizAttempts[key] = (app.quizAttempts[key] || 0) + 1;
       app.game.version = version || expectedVersion;
       app.opponentQuiz = null;
-      app.game.message = Game.passTurnAfterMiss(app.game, color);
+      if (app.rules.lives && (app.quizLives[color] || 0) > 0) {
+        // ライフが残っていれば、ライフを1つ減らして同じ人がもう一度選べる
+        app.quizLives[color] -= 1;
+        app.game.message = Game.colorName(color) + "は不正解。ライフが1つ減りました（のこり " + app.quizLives[color] + "）。もう一度選べます。";
+      } else {
+        app.game.message = Game.passTurnAfterMiss(app.game, color);
+        applyLifeTiebreak();
+      }
       deps.setMessage(source === "com" && !app.localTwoPlayer ? "COM は不正解でした。" + app.game.message.replace("不正解でした。", "") : app.game.message);
       maybeScheduleComTurn();
       return true;

@@ -159,7 +159,8 @@
 
   // 以前の形式 { genre, level } も読めるようにする
   function normalizePicks(input) {
-    var raw = Array.isArray(input.picks) ? input.picks : [{ genre: input.genre, level: input.level }];
+    // 以前の { genre, level } 形式も読む。何も選んでいなければ空（教養モードは問題を選ぶまで始められない）
+    var raw = Array.isArray(input.picks) ? input.picks : (input.genre ? [{ genre: input.genre, level: input.level }] : []);
     var seen = {};
     var picks = [];
     raw.forEach(function (item) {
@@ -182,11 +183,20 @@
         picks.push({ genre: genre.id, level: level });
       }
     });
-    if (!picks.length) {
-      picks.push({ genre: GENRES[0].id, level: GENRES[0].levels[0].id });
-    }
     picks.sort(function (a, b) { return pickOrder(a) - pickOrder(b); });
     return picks;
+  }
+
+  // ライフ：不正解でも、ライフが残っていればライフを1つ減らして同じ人がもう一度選べる（0 = なし）
+  // 回答タイム：秒数を過ぎたら不正解あつかい（0 = なし）
+  var LIFE_CHOICES = [0, 1, 3, 5];
+  var TIME_CHOICES = [0, 10, 20, 30];
+  var DEFAULT_LIVES = 3;
+  var DEFAULT_TIME = 0;
+
+  function pickChoice(value, choices, fallback) {
+    var number = Number(value);
+    return value !== undefined && value !== null && choices.indexOf(number) !== -1 ? number : fallback;
   }
 
   function normalizeRules(rules) {
@@ -195,18 +205,26 @@
       mode: input.mode === "quiz" ? "quiz" : "normal",
       size: window.OthelloGame.normalizeSize(input.size),
       picks: normalizePicks(input),
+      lives: pickChoice(input.lives, LIFE_CHOICES, DEFAULT_LIVES),
+      timeLimit: pickChoice(input.timeLimit, TIME_CHOICES, DEFAULT_TIME),
       seed: Number(input.seed) >>> 0 || 1
     };
   }
 
-  // 1つの組み合わせを ON/OFF する（最後の1つは外さない）
+  // 1つの組み合わせを ON/OFF する（全部外すと「未選択」。START は問題を選ぶまで押せない）
   function togglePick(rules, key) {
     var parts = String(key).split(":");
     var picks = rules.picks.filter(function (pick) { return pickKey(pick) !== key; });
     if (picks.length === rules.picks.length) {
       picks = rules.picks.concat([{ genre: parts[0], level: parts[1] }]);
     }
-    return picks.length ? picks : rules.picks;
+    return picks;
+  }
+
+  // 対局を始められるか（教養モードは問題を1つ以上選んでいること）
+  function isReady(rules) {
+    var normalized = normalizeRules(rules);
+    return normalized.mode !== "quiz" || normalized.picks.length > 0;
   }
 
   function hasPick(rules, key) {
@@ -232,6 +250,9 @@
   // 1つなら「🈷️ 漢字（中学）」、複数なら「🈷️🔤 ミックス（3種類）」
   function describe(rules) {
     var picks = normalizeRules(rules).picks;
+    if (!picks.length) {
+      return "問題を選んでいません";
+    }
     if (picks.length === 1) {
       return describePick(picks[0]);
     }
@@ -583,7 +604,8 @@
 
   // マスの問題。attempt はそのマスで何回目の挑戦か（不正解のあとは別の問題になる）
   //   最初は山の前から空きマスに1つずつ、不正解のあとは盤面で使わなかった残りから出す
-  function questionFor(rules, row, col, attempt) {
+  //   position：不正解のあとに割り当てた山の位置（nextRetryPosition）。ない古い記録は従来の計算で選ぶ
+  function questionFor(rules, row, col, attempt, position) {
     var normalized = normalizeRules(rules);
     var tries = attempt || 0;
     var size = normalized.size;
@@ -591,7 +613,14 @@
     var index = cellIndex(size, row, col);
     var pool = buildPool(normalized);
     var total = pool.entries.length;
-    var position = tries === 0 ? index : cellCount + (index * 7 + tries * 13) % Math.max(1, total - cellCount);
+    if (!total) {
+      return { text: "", tex: "", choices: [], answer: 0, mark: "", genre: "", pick: null, pickLabel: "" };
+    }
+    if (tries === 0) {
+      position = index;
+    } else if (typeof position !== "number") {
+      position = cellCount + (index * 7 + tries * 13) % Math.max(1, total - cellCount);
+    }
     var entry = pool.entries[pool.order[position % total]];
     var pick = entry.pick;
     var random = createRandom(hashString([normalized.seed, pickKey(pick), row, col, tries].join(":")));
@@ -616,8 +645,63 @@
   }
 
   // 盤面に出す1文字
-  function markFor(rules, row, col, attempt) {
-    return questionFor(rules, row, col, attempt).mark || "";
+  function markFor(rules, row, col, attempt, position) {
+    return questionFor(rules, row, col, attempt, position).mark || "";
+  }
+
+  // そのマスでいま出す問題の山の位置（retries[マス] = 不正解のたびに割り当てた位置の列）
+  function currentPosition(rules, retries, row, col) {
+    var list = (retries || {})[row + "-" + col] || [];
+    return list.length ? list[list.length - 1] : cellIndex(normalizeRules(rules).size, row, col);
+  }
+
+  // 対局の記録（マスごとの挑戦回数 attempts・不正解のあとに割り当てた位置 retries）から、そのマスのいまの問題
+  function questionAt(rules, attempts, retries, row, col) {
+    var key = row + "-" + col;
+    var attempt = (attempts || {})[key] || 0;
+    var list = (retries || {})[key] || [];
+    return questionFor(rules, row, col, attempt, attempt && list.length === attempt ? list[attempt - 1] : undefined);
+  }
+
+  // 不正解のあと、そのマスで次に出す問題の山の位置を決める（両方の端末で同じ結果になる）
+  //   1. まだ一度も使っていない問題（空きマスの最初の問題のあと）を順番に使う → 盤面の中で重ならない
+  //   2. 使い切ったら、いま空きマスに出ていない問題（石が置かれたマスの問題など）から選ぶ。
+  //      問題の数が少ないと同じ問題がまた出ることはあるが、空いているマスどうしで重なることはない
+  function nextRetryPosition(rules, board, retries) {
+    var normalized = normalizeRules(rules);
+    var size = normalized.size;
+    var cellCount = size * size - 4;
+    var total = buildPool(normalized).entries.length;
+    var used = 0;
+    Object.keys(retries || {}).forEach(function (key) { used += (retries[key] || []).length; });
+    if (cellCount + used < total) {
+      return cellCount + used;
+    }
+    var mid = size / 2;
+    var showing = {};
+    var row;
+    var col;
+    for (row = 0; row < size; row += 1) {
+      for (col = 0; col < size; col += 1) {
+        if ((row === mid - 1 || row === mid) && (col === mid - 1 || col === mid)) {
+          continue;
+        }
+        if (!board[row][col]) {
+          showing[currentPosition(normalized, retries, row, col) % total] = true;
+        }
+      }
+    }
+    var free = [];
+    var position;
+    for (position = 0; position < total; position += 1) {
+      if (!showing[position]) {
+        free.push(position);
+      }
+    }
+    if (!free.length) {
+      return cellCount + used;
+    }
+    return free[hashString([normalized.seed, "retry", used].join(":")) % free.length];
   }
 
   function newSeed() {
@@ -639,6 +723,12 @@
   window.OthelloQuiz = {
     GENRES: GENRES,
     load: load,
+    isReady: isReady,
+    LIFE_CHOICES: LIFE_CHOICES,
+    TIME_CHOICES: TIME_CHOICES,
+    currentPosition: currentPosition,
+    questionAt: questionAt,
+    nextRetryPosition: nextRetryPosition,
     isLoaded: function () { return loaded; },
     findGenre: findGenre,
     normalizeRules: normalizeRules,

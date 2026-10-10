@@ -87,6 +87,10 @@
       rules: window.OthelloQuiz.normalizeRules({}),
       // 教養モード：マスごとの不正解の回数（次はそのマスで別の問題になる）と、表示中の問題
       quizAttempts: {},
+      // 不正解のあとにマスへ割り当てた問題の位置（盤面で問題が重ならないように）と、残りのライフ
+      quizRetries: {},
+      quizLives: {},
+      quizTimer: null,
       quizPrompt: null,
       // 相手（友だち・COM）が答えている問題。見るだけ。watchOpponent=false なら小さく知らせるだけにする
       opponentQuiz: null,
@@ -192,10 +196,21 @@
       app.remoteStartReady = false;
     }
 
+    function freshLives() {
+      var lives = {};
+      lives[Game.BLACK] = app.rules.lives || 0;
+      lives[Game.WHITE] = app.rules.lives || 0;
+      return lives;
+    }
+
     function resetGame() {
       app.game = Game.createFreshGame(app.rules.size);
       app.quizAttempts = {};
+      app.quizRetries = {};
+      app.quizLives = freshLives();
       app.quizPrompt = null;
+      app.opponentQuiz = null;
+      stopTimer("quizTimer");
       app.resultOverlayDismissed = false;
       render();
     }
@@ -242,7 +257,9 @@
         myColor: app.myColor,
         game: app.game,
         rules: app.rules,
-        quizAttempts: app.quizAttempts
+        quizAttempts: app.quizAttempts,
+        quizRetries: app.quizRetries,
+        quizLives: app.quizLives
       };
 
       try {
@@ -285,6 +302,8 @@
       if (saved.rules) {
         app.rules = window.OthelloQuiz.normalizeRules(saved.rules);
         app.quizAttempts = saved.quizAttempts || {};
+        app.quizRetries = saved.quizRetries || {};
+        app.quizLives = saved.quizLives || freshLives();
       }
       return true;
     }
@@ -442,6 +461,7 @@
 
     var play = window.OthelloPlay.create(app, {
       clearRematch: clearRematch,
+      freshLives: freshLives,
       getRemotePeerId: getRemotePeerId,
       onReconnectTimeout: handleReconnectTimeout,
       render: render,

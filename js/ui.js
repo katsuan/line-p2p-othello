@@ -542,6 +542,9 @@
       ruleBadge: documentRef.getElementById("ruleBadge"),
       quizOverlay: documentRef.getElementById("quizOverlay"),
       quizGenre: documentRef.getElementById("quizGenre"),
+      quizCountdown: documentRef.getElementById("quizCountdown"),
+      lifeChoices: documentRef.getElementById("lifeChoices"),
+      timeChoices: documentRef.getElementById("timeChoices"),
       quizText: documentRef.getElementById("quizText"),
       quizChoices: documentRef.getElementById("quizChoices"),
       quizResult: documentRef.getElementById("quizResult"),
@@ -557,8 +560,53 @@
     function rulesText(app) {
       var sizeText = app.rules.size + "×" + app.rules.size;
       return app.rules.mode === "quiz" ?
-        "📚 教養 " + window.OthelloQuiz.describe(app.rules) + "・" + sizeText :
+        "📚 教養 " + window.OthelloQuiz.describe(app.rules) + "・" + sizeText +
+          "・" + lifeLabel(app.rules.lives) + (app.rules.timeLimit ? "・⏱" + app.rules.timeLimit + "秒" : "") :
         "ふつう・" + sizeText;
+    }
+
+    function lifeLabel(lives) {
+      return lives ? "❤️" + lives : "ライフなし";
+    }
+
+    // カードの名前の横に出すライフ（教養モードの対局中だけ）
+    function livesText(app, color) {
+      if (app.rules.mode !== "quiz" || !app.rules.lives || !color || !(app.matchConfigured || app.game.winner)) {
+        return "";
+      }
+      var left = (app.quizLives || {})[color] || 0;
+      return left ? "❤️".repeat(left) : "🤍";
+    }
+
+    function setLabelWithLives(element, label, lives) {
+      element.textContent = label;
+      if (lives) {
+        var span = documentRef.createElement("span");
+        span.className = "player-lives";
+        span.textContent = lives;
+        element.appendChild(span);
+      }
+    }
+
+    // 回答タイムの残り秒数。表示中の問題に締め切りがあるあいだだけ数える
+    var countdownTimer = null;
+    function updateCountdown(prompt) {
+      var active = !!prompt && !!prompt.deadline && prompt.chosen === null;
+      setHidden(elements.quizCountdown, !(prompt && prompt.deadline));
+      if (prompt && prompt.deadline) {
+        var left = Math.max(0, Math.ceil((prompt.deadline - Date.now()) / 1000));
+        setText(elements.quizCountdown, prompt.chosen === null ? "⏱ " + left + "秒" : "⏱");
+        elements.quizCountdown.classList.toggle("is-hurry", active && left <= 5);
+      }
+      if (active && !countdownTimer) {
+        countdownTimer = window.setInterval(function () {
+          var current = lastApp && (lastApp.quizPrompt || lastApp.opponentQuiz);
+          updateCountdown(current);
+        }, 250);
+      } else if (!active && countdownTimer) {
+        window.clearInterval(countdownTimer);
+        countdownTimer = null;
+      }
     }
 
     var lastApp = null;
@@ -587,6 +635,20 @@
         }).join("");
         elements.ruleNormalButton.addEventListener("click", function () { handlers.onChangeRules({ mode: "normal" }); });
         elements.ruleQuizButton.addEventListener("click", function () { handlers.onChangeRules({ mode: "quiz" }); });
+        elements.lifeChoices.innerHTML = window.OthelloQuiz.LIFE_CHOICES.map(function (lives) {
+          return chip(lives ? "❤️" + lives : "なし", lives, "data-lives");
+        }).join("");
+        elements.timeChoices.innerHTML = window.OthelloQuiz.TIME_CHOICES.map(function (seconds) {
+          return chip(seconds ? seconds + "秒" : "なし", seconds, "data-time");
+        }).join("");
+        elements.lifeChoices.addEventListener("click", function (event) {
+          var button = event.target.closest("[data-lives]");
+          if (button) handlers.onChangeRules({ lives: Number(button.getAttribute("data-lives")) });
+        });
+        elements.timeChoices.addEventListener("click", function (event) {
+          var button = event.target.closest("[data-time]");
+          if (button) handlers.onChangeRules({ timeLimit: Number(button.getAttribute("data-time")) });
+        });
         elements.sizeChoices.addEventListener("click", function (event) {
           var button = event.target.closest("[data-size]");
           if (button) handlers.onChangeRules({ size: Number(button.getAttribute("data-size")) });
@@ -698,8 +760,9 @@
         setText(elements.joinRoomButton, roomFlow.joinLabel);
         setText(elements.newRoomButton, roomFlow.newRoomLabel);
         setText(elements.roomCurrentId, app.roomId ? ("ルームID: " + app.roomId) : "ルーム未作成");
-        setText(elements.myLabel, getMyLabel(app));
-        setText(elements.opponentLabel, getOpponentLabel(app));
+        setLabelWithLives(elements.myLabel, getMyLabel(app), livesText(app, app.myColor || (app.localTwoPlayer ? Game.BLACK : "")));
+        setLabelWithLives(elements.opponentLabel, getOpponentLabel(app),
+          livesText(app, app.myColor ? Game.getOpponent(app.myColor) : (app.localTwoPlayer ? Game.WHITE : "")));
         setText(elements.myName, app.localTwoPlayer ? localName(Game.BLACK) : (app.displayName || "あなた"));
         setText(elements.opponentName, getOpponentName(app));
         setText(elements.myPresence, getMyPresenceText(app));
@@ -805,6 +868,12 @@
         setHidden(elements.quizRuleRows, !isQuiz);
         elements.ruleNormalButton.classList.toggle("active", !isQuiz);
         elements.ruleQuizButton.classList.toggle("active", isQuiz);
+        Array.prototype.forEach.call(elements.lifeChoices.children, function (button) {
+          button.classList.toggle("active", Number(button.getAttribute("data-lives")) === app.rules.lives);
+        });
+        Array.prototype.forEach.call(elements.timeChoices.children, function (button) {
+          button.classList.toggle("active", Number(button.getAttribute("data-time")) === app.rules.timeLimit);
+        });
         Array.prototype.forEach.call(elements.sizeChoices.children, function (button) {
           button.classList.toggle("active", Number(button.getAttribute("data-size")) === app.rules.size);
         });
@@ -856,14 +925,23 @@
             button.classList.toggle("is-wrong", answered && index === prompt.chosen && !prompt.correct);
           });
           elements.quizGiveUp.disabled = answered;
-          var resultText = !answered ? "" : watching ?
-            (prompt.correct ? "⭕ 正解… " + (prompt.byCom ? "COM" : "相手") + "が石を置きます" : (prompt.chosen < 0 ? "🤷 わからない… あなたの番です" : "❌ 不正解！ あなたの番です")) :
-            (prompt.correct ? "⭕ 正解！ 石を置きます" : "❌ 不正解… 相手の番です");
+          // 不正解のとき：ライフが残っていればライフが減ってもう一度、なければ相手の番
+          var answerColor = prompt.color || (watching ? (app.myColor ? Game.getOpponent(app.myColor) : "") : app.myColor);
+          var livesLeft = (app.quizLives || {})[answerColor] || 0;
+          var canRetry = !!app.rules.lives && livesLeft > 0;
+          var missWord = prompt.chosen === -2 ? "⏰ 時間切れ" : (prompt.chosen === -1 ? "🤷 わからない" : "❌ 不正解");
+          var who = prompt.byCom ? "COM" : "相手";
+          var resultText = !answered ? "" : prompt.correct ?
+            (watching ? "⭕ 正解… " + who + "が石を置きます" : "⭕ 正解！ 石を置きます") :
+            missWord + (canRetry ?
+              "… " + (watching ? who + "の" : "") + "ライフ −1（のこり " + (livesLeft - 1) + "）" + (watching ? "" : "。もう一度選べます") :
+              (watching ? "… あなたの番です" : (app.localTwoPlayer ? "… 交代です" : "… 相手の番です")));
           setText(elements.quizResult, resultText);
           elements.quizResult.className = "quiz-result" + (answered ? (prompt.correct ? " is-correct" : " is-wrong") : "");
         } else {
           renderedQuizPrompt = null;
         }
+        updateCountdown(prompt);
 
         var showStart = shouldShowStartOverlay(app);
         // 準備の欄が出ているときは、その一番下の START を使う（盤面までスクロールしなくてよい）
@@ -872,8 +950,10 @@
         setHidden(elements.startButton, startInSetup);
         setHidden(elements.setupStartButton, !startInSetup);
         if (showStart) {
-          var startLabel = app.opponentMode === "human" && app.localStartReady ? "準備OK・相手を待っています" : "▶ START";
-          var startDisabled = app.opponentMode === "com" ? app.role !== "host" : !!app.localStartReady;
+          var rulesReady = window.OthelloQuiz.isReady(app.rules);
+          var startLabel = !rulesReady ? (app.role === "host" ? "問題を選ぶと START できます" : "ホストが問題を選んでいます") :
+            (app.opponentMode === "human" && app.localStartReady ? "準備OK・相手を待っています" : "▶ START");
+          var startDisabled = !rulesReady || (app.opponentMode === "com" ? app.role !== "host" : !!app.localStartReady);
           setText(elements.startWord, "START");
           setText(elements.startCaption, getStartCaption(app));
           setText(elements.startButton, startLabel);
@@ -897,8 +977,11 @@
           app.game.winner + "の勝ち" :
           (outcome === "draw" ? "DRAW" : (outcome === "win" ? "WIN" : "LOSE")));
         setText(elements.resultCaption, getResultCaption(app));
+        var resultLives = app.rules.mode === "quiz" && app.rules.lives && counts.black === counts.white ?
+          "（ライフ " + ((app.quizLives || {})[app.myColor === Game.WHITE ? Game.WHITE : Game.BLACK] || 0) + " - " +
+          ((app.quizLives || {})[app.myColor === Game.WHITE ? Game.BLACK : Game.WHITE] || 0) + "）" : "";
         setText(elements.resultScoreline, String(app.myColor === Game.BLACK ? counts.black : counts.white) + " - " +
-          String(app.myColor === Game.BLACK ? counts.white : counts.black));
+          String(app.myColor === Game.BLACK ? counts.white : counts.black) + resultLives);
         setText(elements.resultPrimaryButton, app.rematch.outgoing ? "送信中" : "はい");
         setText(elements.resultSecondaryButton, app.rematch.outgoing ? "閉じる" : "いいえ");
         elements.resultPrimaryButton.disabled = !!app.rematch.outgoing;
@@ -931,7 +1014,7 @@
           if (!cellValue && app.rules.mode === "quiz" && app.matchConfigured) {
             var mark = documentRef.createElement("span");
             mark.className = "cell-mark";
-            mark.textContent = window.OthelloQuiz.markFor(app.rules, row, col, app.quizAttempts[key] || 0);
+            mark.textContent = window.OthelloQuiz.questionAt(app.rules, app.quizAttempts, app.quizRetries, row, col).mark || "";
             button.appendChild(mark);
           }
 
