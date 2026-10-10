@@ -25,6 +25,15 @@
   gap: 12px;
 }
 
+/* 先手（黒）を左、後手（白）を右に並べる。色が決まる前は「あなた」が左 */
+.board-head .player-card.color-black {
+  order: 1;
+}
+
+.board-head .player-card.color-white {
+  order: 2;
+}
+
 .host-setup-panel {
   display: grid;
   gap: 10px;
@@ -33,7 +42,7 @@
 
 .host-setup-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 14px 18px;
   align-items: end;
 }
@@ -46,7 +55,7 @@
 }
 
 #hostSetupOpponentSlot {
-  justify-self: end;
+  justify-self: start;
 }
 
 #hostSetupOpponentSlot .control-actions {
@@ -615,7 +624,7 @@
 
   .host-setup-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     gap: 10px;
   }
 
@@ -631,13 +640,6 @@
     justify-content: flex-start;
   }
 
-  #hostSetupOpponentSlot {
-    justify-self: end;
-  }
-
-  #hostSetupOpponentSlot .control-actions {
-    justify-content: flex-end;
-  }
 
   .host-setup-hint {
     text-align: left;
@@ -693,9 +695,35 @@
 .rule-setup {
   display: grid;
   gap: 10px;
-  margin-top: 12px;
-  padding-top: 12px;
+}
+
+.setup-heading {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+/* 準備のいちばん下に START（盤面までスクロールしなくても始められる） */
+.setup-start-button {
+  width: 100%;
+  min-height: 52px;
+  border-radius: 16px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.setup-start-button.hidden {
+  display: none;
+}
+
+/* 対戦相手の切り替えは、入口で選んだあとの「変えたいとき用」なので控えめに */
+.host-setup-opponent {
+  padding-top: 10px;
   border-top: 1px dashed rgba(0, 0, 0, 0.12);
+}
+
+.host-setup-opponent .button-chip {
+  font-size: 0.82rem;
 }
 
 .rule-row {
@@ -831,6 +859,66 @@
   font-size: 0.85rem;
 }
 
+/* 相手の回答を見ているとき：背景は薄めにして、選択肢は押せない見た目にする */
+.quiz-overlay.is-watching {
+  background: rgba(10, 30, 20, 0.2);
+}
+
+.quiz-overlay.is-watching .quiz-choice {
+  cursor: default;
+}
+
+.quiz-watch-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #2f6b4a;
+}
+
+.quiz-watch-head.hidden,
+.quiz-watch-pill.hidden {
+  display: none;
+}
+
+.quiz-watch-toggle {
+  padding: 2px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* 「隠す」にしたあとは、相手が答えている間だけ小さく知らせる */
+.quiz-watch-pill {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(20, 50, 35, 0.85);
+  color: #fff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.quiz-watch-pill span + span {
+  margin-left: 6px;
+  opacity: 0.8;
+}
+
 /* 教養モード：空いているマスに出す問題の1文字 */
 .cell-mark {
   position: absolute;
@@ -867,4 +955,56 @@
 
 .board.is-quiz .cell.opponent-valid {
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+/* 問題の選択（ジャンルごとの行に、レベルのボタン。複数選べる） */
+.pick-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.pick-row {
+  display: grid;
+  grid-template-columns: 9.5em minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.pick-genre {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+@media (max-width: 420px) {
+  .pick-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
+/* 対局後はルールの欄だけを出す */
+.host-setup-panel.is-post-game .host-setup-grid,
+.host-setup-panel.is-post-game .host-setup-opponent,
+.host-setup-panel.is-post-game .setup-start-button,
+.host-setup-panel.is-post-game #controlHint {
+  display: none;
+}
+
+.rule-post-game {
+  margin: 0;
+  font-weight: 700;
+}
+
+/* 数式（KaTeX）は少し大きめにし、長い式は横にはみ出さず折り返す */
+.quiz-text .katex {
+  font-size: 1.12em;
+}
+
+.quiz-text .katex-display,
+.quiz-text {
+  overflow-wrap: anywhere;
+}
+
+.quiz-choice .katex {
+  font-size: 1.15em;
 }

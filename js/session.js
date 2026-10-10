@@ -24,6 +24,22 @@
     return nextParams.toString() ? (baseUrl + "?" + nextParams.toString()) : baseUrl;
   }
 
+  var WATCH_STORAGE_KEY = "othello:watch-opponent";
+
+  function loadWatchOpponent() {
+    try {
+      return window.localStorage.getItem(WATCH_STORAGE_KEY) !== "0";
+    } catch (error) {
+      return true;
+    }
+  }
+
+  function saveWatchOpponent(value) {
+    try {
+      window.localStorage.setItem(WATCH_STORAGE_KEY, value ? "1" : "0");
+    } catch (error) {}
+  }
+
   function createState(ui) {
     return {
       ui: ui,
@@ -72,6 +88,11 @@
       // 教養モード：マスごとの不正解の回数（次はそのマスで別の問題になる）と、表示中の問題
       quizAttempts: {},
       quizPrompt: null,
+      // 相手（友だち・COM）が答えている問題。見るだけ。watchOpponent=false なら小さく知らせるだけにする
+      opponentQuiz: null,
+      watchOpponent: loadWatchOpponent(),
+      // 1台で2人：COM の代わりに、同じ端末で黒と白を交代で打つ
+      localTwoPlayer: false,
       status: {
         message: "準備しています…",
         transport: "起動中…",
@@ -202,7 +223,8 @@
     function saveLocalState() {
       var payload;
 
-      if (!app.roomId || !app.userId) {
+      // 役割（ホスト/ゲスト）が決まる前に保存すると、前の対局の記録を空の状態で上書きしてしまう
+      if (!app.roomId || !app.userId || !app.role) {
         return;
       }
 
@@ -210,6 +232,7 @@
         userId: app.userId,
         role: app.role,
         opponentMode: app.opponentMode,
+        localTwoPlayer: app.localTwoPlayer,
         desiredHostColor: app.desiredHostColor,
         currentHostColor: app.currentHostColor,
         hostTransferred: app.hostTransferred,
@@ -247,6 +270,7 @@
       }
 
       app.opponentMode = saved.opponentMode || app.opponentMode;
+      app.localTwoPlayer = app.opponentMode === "com" && !!saved.localTwoPlayer;
       app.desiredHostColor = saved.desiredHostColor || app.desiredHostColor;
       app.currentHostColor = saved.currentHostColor || app.currentHostColor;
       app.hostTransferred = !!saved.hostTransferred;
@@ -278,7 +302,8 @@
     function prepareRoomContext() {
       var params = new URLSearchParams(window.location.search);
       // 「COMと練習」から来たときは、ルームを開いたあと COM 対戦を選んだ状態にする（URL からはすぐ消える）
-      app.startWithCom = params.get("opponent") === "com";
+      app.startWithCom = params.get("opponent") === "com" || params.get("opponent") === "local";
+      app.startWithLocal = params.get("opponent") === "local";
       updateRoomContext(params.get("room") || "", params.get("join") === "1", true);
     }
 
@@ -520,6 +545,19 @@
       app.pausePersistence = false;
       render();
 
+      // COM・1台で2人の対局は、この端末だけで続きから遊べる
+      if (app.hadLocalSession && app.opponentMode === "com" && app.role === "host") {
+        app.transportMode = "com";
+        setOpponentProfile(app.localTwoPlayer ? "白の人" : "COM", "");
+        setTransport("ローカル");
+        setMode(app.localTwoPlayer ? "1台で2人" : "COM 対戦");
+        setOpponentStatus(app.matchConfigured ? "対局中" : "START 待ち");
+        setMessage(app.matchConfigured && !app.game.winner ? "続きから遊べます。" : "START を押してください。");
+        play.resumeComTurn();
+        render();
+        return Promise.resolve();
+      }
+
       if (entry === "resume-host" &&
           !!roomData.guestUserId &&
           !app.hadLocalSession &&
@@ -577,6 +615,7 @@
         return;
       }
       app.opponentMode = "human";
+      app.localTwoPlayer = false;
       app.transportMode = "matchmaking";
       clearResumeState();
       clearStartReady();
@@ -593,11 +632,12 @@
       subscribeToRoom();
     }
 
-    function selectComMode() {
+    function selectComMode(local) {
       if (app.role !== "host" || AppPeer.isConnected() || app.game.lastMove || app.game.winner) {
         setMessage("対戦相手の種類は、接続前かつ対局前のみ変更できます。");
         return;
       }
+      app.localTwoPlayer = local === true;
       app.opponentMode = "com";
       app.transportMode = "com";
       clearResumeState();
@@ -608,11 +648,17 @@
       stopRoomSubscription();
       clearRematch();
       resetGame();
-      setOpponentProfile("COM", "");
+      setOpponentProfile(app.localTwoPlayer ? "白の人" : "COM", "");
       setTransport("ローカル");
-      setMode("COM 準備");
+      setMode(app.localTwoPlayer ? "1台で2人" : "COM 準備");
       setOpponentStatus("START 待ち");
-      setMessage("COM と練習できます。色を決めて START を押してください。");
+      if (app.localTwoPlayer) {
+        // 1台で2人は、黒（先手）が左のカード・白が右のカード。色の入れ替えはしない
+        app.desiredHostColor = Game.BLACK;
+        setMessage("1台で2人で遊べます。黒の人から交代で打ちます。START を押してください。");
+      } else {
+        setMessage("COM と練習できます。色を決めて START を押してください。");
+      }
     }
 
     function handleHostColorChange(color) {
@@ -636,6 +682,9 @@
     }
 
     function toggleHostColor() {
+      if (app.localTwoPlayer) {
+        return;
+      }
       handleHostColorChange(app.desiredHostColor === Game.BLACK ? Game.WHITE : Game.BLACK);
     }
 
@@ -672,7 +721,8 @@
         prepareRoomContext();
         ui.bind({
           onBoardClick: function (event) {
-            if (app.myColor && !app.spectatorMode && !app.resumePending && app.game.currentTurn === app.myColor && !app.game.winner) {
+            var acting = app.localTwoPlayer ? app.game.currentTurn : app.myColor;
+            if (app.myColor && acting && !app.spectatorMode && !app.resumePending && app.game.currentTurn === acting && !app.game.winner) {
               var row = Number(event.currentTarget.getAttribute("data-row"));
               var col = Number(event.currentTarget.getAttribute("data-col"));
               // 教養モードは、置く前に問題に答える
@@ -725,13 +775,24 @@
             url.searchParams.set("opponent", "com");
             window.location.href = url.toString();
           },
+          onNewLocalRoom: function () {
+            var url = new URL(buildPageUrl(Platform.generateId("room"), false), window.location.href);
+            url.searchParams.set("opponent", "local");
+            window.location.href = url.toString();
+          },
+          onToggleWatch: function () {
+            app.watchOpponent = !app.watchOpponent;
+            saveWatchOpponent(app.watchOpponent);
+            render();
+          },
           onRetryReconnect: play.retryReconnectNow,
           onHardReload: function () { AppPeer.disconnect(); Platform.reload(buildPageUrl(app.roomId, app.joinRequested), true); },
           onStartGame: play.startMatch,
           onResumeContinue: play.resumeCurrentGame,
           onResumeRestart: play.restartReturnedGame,
           onSelectHuman: selectHumanMode,
-          onSelectCom: selectComMode,
+          onSelectCom: function () { selectComMode(false); },
+          onSelectLocal: function () { selectComMode(true); },
           onSwapColors: toggleHostColor,
           onResultPrimary: function () {
             if (app.rematch.incoming) {
@@ -773,9 +834,10 @@
           return Matchmaking.fetchRoom(app.roomId).then(handleRoomEntry);
         }).then(function () {
           if (app.startWithCom && app.role === "host") {
-            selectComMode();
+            selectComMode(app.startWithLocal);
           }
           app.startWithCom = false;
+          app.startWithLocal = false;
           finishBoot();
         }).catch(function (error) {
           finishBoot();

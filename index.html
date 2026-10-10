@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="css/board.css">
 </head>
 <body class="boot-loading">
+  <p class="boot-note" aria-live="polite">準備しています…</p>
   <div class="app">
     <section class="panel topbar">
       <div class="title-group">
@@ -31,6 +32,15 @@
               <span class="start-choice-title">🤖 COMと練習</span>
               <span class="start-choice-sub">ひとりですぐ遊ぶ</span>
             </button>
+            <button id="newLocalRoomButton" class="button-secondary start-choice" type="button">
+              <span class="start-choice-title">📱 1台で2人</span>
+              <span class="start-choice-sub">この端末を交代で使う</span>
+            </button>
+          </div>
+          <!-- 招待中は「LINEで招待」をいちばん上に。ルームIDは LINE 以外で伝えたいとき用 -->
+          <div id="roomActionRow" class="button-row room-action-row hidden">
+            <button id="shareButton" class="button-primary" type="button">LINEで招待</button>
+            <div id="roomActionNote" class="room-action-note hidden">このルームでそのまま進めます。</div>
           </div>
           <div id="roomCurrentRow" class="room-current-row hidden">
             <div id="roomCurrentId" class="room-current-id">room-xxxxxx</div>
@@ -38,10 +48,6 @@
           <div id="roomCurrentActions" class="button-row room-current-actions hidden">
             <button id="copyRoomIdButton" class="button-secondary button-compact" type="button">IDをコピー</button>
             <button id="quickReconnectButton" class="button-secondary button-compact" type="button">再接続</button>
-          </div>
-          <div id="roomActionRow" class="button-row room-action-row hidden">
-            <button id="shareButton" class="button-primary" type="button">LINEで招待</button>
-            <div id="roomActionNote" class="room-action-note hidden">このルームでそのまま進めます。</div>
           </div>
         </div>
         <details id="roomTools" class="room-tools">
@@ -62,29 +68,12 @@
 
     <section class="board-layout">
       <div class="panel board-shell">
+        <!-- 対局の準備：上から順に「ルール → 問題 → 盤面 → 色 → START」。対戦相手の切り替えは最後に小さく -->
         <div id="hostSetupPanel" class="host-setup-panel hidden">
-          <div class="host-setup-grid">
-            <div class="host-setup-slot">
-              <div class="host-setup-label">色変更</div>
-              <button id="hostColorSwapButton" class="swap-color-button is-black-start" type="button" aria-label="先手と色を切り替える"
-                title="先手と色を切り替える">
-                <span class="swap-disc swap-disc-black"></span>
-                <span class="swap-arrow">↻</span>
-                <span class="swap-disc swap-disc-white"></span>
-              </button>
-            </div>
-            <div id="hostSetupOpponentSlot" class="host-setup-slot">
-              <div class="host-setup-label">対戦相手</div>
-              <div class="control-actions">
-                <button id="humanOpponentButton" class="button-chip active" type="button">友だち</button>
-                <button id="comOpponentButton" class="button-chip" type="button">COM</button>
-              </div>
-            </div>
-          </div>
-          <div id="controlHint" class="small host-setup-hint">黒が先手です。ボタンで自分の色だけを切り替えます。</div>
-
+          <div class="setup-heading">対局の準備</div>
           <!-- ルール（ホストが決める）。教養モードは問題に正解すると石を置ける -->
           <div id="ruleSetup" class="rule-setup">
+            <p id="rulePostGameNote" class="small rule-post-game hidden">対局が終わりました。ルールを変えると、相手といっしょに次の対局の準備に移ります。</p>
             <div class="rule-row">
               <span class="host-setup-label">ルール</span>
               <div class="control-actions">
@@ -92,23 +81,44 @@
                 <button id="ruleQuizButton" class="button-chip" type="button">📚 教養</button>
               </div>
             </div>
+            <div id="quizRuleRows" class="hidden">
+              <div class="small host-setup-hint">置けるマスを押すと4択の問題が出ます。正解すると石を置けて、不正解なら相手の番です。</div>
+              <div class="host-setup-label">問題（いくつでも選べます）</div>
+              <!-- ジャンルごとの行に、レベルのボタンを並べる。押すたびに ON/OFF -->
+              <div id="pickRows" class="pick-rows"></div>
+            </div>
             <div class="rule-row">
               <span class="host-setup-label">盤面</span>
               <div id="sizeChoices" class="control-actions"></div>
             </div>
-            <div id="quizRuleRows" class="hidden">
-              <div class="rule-row">
-                <span class="host-setup-label">ジャンル</span>
-                <div id="genreChoices" class="control-actions rule-wrap"></div>
-              </div>
-              <div class="rule-row">
-                <span class="host-setup-label">レベル</span>
-                <div id="levelChoices" class="control-actions rule-wrap"></div>
-              </div>
-              <div class="small host-setup-hint">置けるマスを押すと4択の問題が出ます。正解すると石を置けて、不正解なら相手の番です。</div>
-            </div>
           </div>
           <div id="ruleSummary" class="small rule-summary hidden"></div>
+
+          <div class="host-setup-grid">
+            <div id="hostSetupColorSlot" class="host-setup-slot">
+              <div class="host-setup-label">あなたの色</div>
+              <button id="hostColorSwapButton" class="swap-color-button is-black-start" type="button" aria-label="先手と色を切り替える"
+                title="先手と色を切り替える">
+                <span class="swap-disc swap-disc-black"></span>
+                <span class="swap-arrow">↻</span>
+                <span class="swap-disc swap-disc-white"></span>
+              </button>
+            </div>
+            <div id="controlHint" class="small host-setup-hint">黒が先手です。ボタンで自分の色だけを切り替えます。</div>
+          </div>
+
+          <button id="setupStartButton" class="button-primary setup-start-button hidden" type="button">START</button>
+
+          <div class="host-setup-opponent">
+            <div id="hostSetupOpponentSlot" class="host-setup-slot">
+              <div class="host-setup-label">対戦相手</div>
+              <div class="control-actions">
+                <button id="humanOpponentButton" class="button-chip active" type="button">友だち</button>
+                <button id="comOpponentButton" class="button-chip" type="button">COM</button>
+                <button id="localOpponentButton" class="button-chip" type="button">1台で</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div id="ruleBadge" class="rule-badge hidden"></div>
@@ -160,6 +170,11 @@
           <div id="board" class="board" aria-label="オセロ盤"></div>
           <div id="quizOverlay" class="quiz-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="quizText">
             <div class="quiz-card">
+              <!-- 相手が答えているときだけ出す（見るだけ。「隠す」で以後は出さない） -->
+              <div id="quizWatchHead" class="quiz-watch-head hidden">
+                <span id="quizWatchTitle">👀 相手が回答中…</span>
+                <button id="quizWatchHide" class="quiz-watch-toggle" type="button">隠す</button>
+              </div>
               <div id="quizGenre" class="quiz-genre"></div>
               <div id="quizText" class="quiz-text"></div>
               <div id="quizChoices" class="quiz-choices"></div>
@@ -167,6 +182,7 @@
               <button id="quizGiveUp" class="button-ghost quiz-give-up" type="button">わからない（相手の番にする）</button>
             </div>
           </div>
+          <button id="quizWatchPill" class="quiz-watch-pill hidden" type="button"><span id="quizWatchPillText">相手が回答中…</span><span>👀 見る</span></button>
           <div id="startOverlay" class="start-overlay hidden">
             <div class="start-card">
               <div id="startWord" class="start-word">START</div>
@@ -235,8 +251,8 @@
   <script src="js/firebase.js"></script>
   <script src="js/webrtc.js"></script>
   <script src="js/game.js"></script>
-  <script src="js/quiz-data.js"></script>
   <script src="js/quiz.js"></script>
+  <script src="js/tex.js"></script>
   <script src="js/platform.js"></script>
   <script src="js/matchmaking.js"></script>
   <script src="js/ui.js"></script>

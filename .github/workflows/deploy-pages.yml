@@ -26,6 +26,9 @@ jobs:
       - name: Generate version badge file
         run: sh scripts/update-version.sh
 
+      - name: Generate question file list
+        run: sh scripts/build-question-index.sh
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 

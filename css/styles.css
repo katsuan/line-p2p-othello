@@ -29,6 +29,29 @@ body.boot-loading .board-layout {
   pointer-events: none;
 }
 
+/* 起動中（LINE ログイン・ルーム確認）は「準備しています…」だけを出す */
+.boot-note {
+  display: none;
+}
+
+body.boot-loading .boot-note {
+  display: block;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 45%;
+  margin: 0;
+  text-align: center;
+  font-weight: 700;
+  opacity: 0.6;
+  z-index: 5;
+}
+
+/* ルームを選ぶ前は盤面を出さない（押せそうに見えて迷うため）。始め方の3択だけに集中させる */
+body.is-lobby .board-shell {
+  display: none;
+}
+
 body.boot-loading .top-actions,
 body.boot-loading .board-layout,
 .top-actions,
@@ -357,12 +380,16 @@ button:disabled {
   }
 }
 
-/* ルームがないときの2つの始め方（友だちと対戦／COMと練習） */
+/* ルームがないときの始め方。いちばん使う「友だちと対戦」を上に大きく、COM・1台で2人を下に並べる */
 .start-choices {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-top: 12px;
+}
+
+.start-choices .start-choice:first-child {
+  grid-column: 1 / -1;
 }
 
 .start-choice {

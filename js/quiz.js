@@ -1,26 +1,14 @@
 // 教養モードの問題。マスごとの問題は「問題の種・マス・何回目の挑戦か」から決まるので、
 // 通信対戦でも両方の端末で同じ問題・同じ選択肢の並びになる（問題そのものは送らない）。
 (function (window) {
-  var Data = window.OthelloQuizData || {};
-
-  // ジャンルとレベル。label は画面に出す名前
-  var GENRES = [
-    { id: "kanji", label: "漢字", icon: "🈷️", levels: [
-      { id: "e", label: "小学" }, { id: "j", label: "中学" }, { id: "h", label: "高校" }
-    ] },
-    { id: "english", label: "英単語", icon: "🔤", levels: [
-      { id: "j", label: "中学" }, { id: "h", label: "高校" }, { id: "u", label: "大学" }
-    ] },
-    { id: "proverb", label: "ことわざ・四字熟語", icon: "📜", levels: [
-      { id: "kotowaza", label: "ことわざ" }, { id: "yoji", label: "四字熟語" }
-    ] },
-    { id: "general", label: "一般教養", icon: "🌏", levels: [
-      { id: "basic", label: "やさしい" }, { id: "advanced", label: "むずかしい" }
-    ] },
-    { id: "math", label: "数学", icon: "🧮", levels: [
-      { id: "e", label: "小学" }, { id: "j", label: "中学" }, { id: "h", label: "高校" }, { id: "u", label: "大学（微積）" }
-    ] }
-  ];
+  // ジャンルとレベル。数学はその場で計算して作るので組み込み、それ以外は questions/*.json から読み込む（load）
+  //   level.type: "pairs"（[問い, 答え] の組）/ "choices"（{ q, a, w: [まちがい3つ], m }）/ "math"
+  var MATH_GENRE = { id: "math", label: "数学", icon: "🧮", order: 90, levels: [
+    { id: "e", label: "小学", type: "math" }, { id: "j", label: "中学", type: "math" },
+    { id: "h", label: "高校", type: "math" }, { id: "u", label: "大学（微積）", type: "math" }
+  ] };
+  var GENRES = [MATH_GENRE];
+  var loaded = false;
 
   function findGenre(genreId) {
     var index;
@@ -32,39 +20,229 @@
     return GENRES[0];
   }
 
+  function levelOf(pick) {
+    var genre = findGenre(pick.genre);
+    var found = genre.levels[0];
+    genre.levels.forEach(function (level) {
+      if (level.id === pick.level) {
+        found = level;
+      }
+    });
+    return found;
+  }
+
+  // ---- questions/*.json の読み込み ----
+  //   形式がおかしい問題・ジャンルは読み飛ばして console に出す（ほかの問題はそのまま使える）
+  function isText(value) {
+    return typeof value === "string" && value.trim() !== "";
+  }
+
+  function validateGenre(raw, fileName) {
+    if (!raw || !isText(raw.id) || !isText(raw.label) || !Array.isArray(raw.levels)) {
+      console.warn("問題ファイルの形式が正しくありません:", fileName);
+      return null;
+    }
+    if (raw.id === MATH_GENRE.id || GENRES.some(function (genre) { return genre.id === raw.id; })) {
+      console.warn("ジャンル id が重複しているため読み飛ばします:", raw.id, fileName);
+      return null;
+    }
+    var levels = raw.levels.map(function (level) {
+      if (!level || !isText(level.id) || !isText(level.label) || !Array.isArray(level.items)) {
+        return null;
+      }
+      var type = level.type === "choices" ? "choices" : "pairs";
+      var seen = {};
+      var items = level.items.filter(function (item) {
+        var ok = type === "pairs" ?
+          Array.isArray(item) && isText(item[0]) && isText(item[1]) :
+          item && isText(item.q) && isText(item.a) && Array.isArray(item.w) && item.w.length >= 3 && item.w.every(isText);
+        var key = type === "pairs" ? ok && item[0] : ok && item.q;
+        if (!ok || seen[key]) {
+          return false;
+        }
+        seen[key] = true;
+        return true;
+      });
+      // pairs はまちがいの選択肢を同じレベルの別の組から選ぶので、4組以上必要
+      if (items.length < (type === "pairs" ? 4 : 1)) {
+        console.warn("問題が少ないレベルを読み飛ばします:", raw.id + ":" + level.id, fileName);
+        return null;
+      }
+      return {
+        id: level.id,
+        label: level.label,
+        type: type,
+        template: isText(level.template) ? level.template : "「{q}」の意味は？",
+        mark: level.mark === "first-letter" ? "first-letter" : "rare-kanji",
+        items: items
+      };
+    }).filter(Boolean);
+    if (!levels.length) {
+      return null;
+    }
+    return {
+      id: raw.id,
+      label: raw.label,
+      icon: isText(raw.icon) ? raw.icon : "📘",
+      order: Number(raw.order) || 50,
+      levels: levels
+    };
+  }
+
+  // questions/index.json に並んだファイルを読み込む（index.json は公開時に scripts/build-question-index.sh が作る）
+  function load(baseUrl) {
+    var base = baseUrl || "questions/";
+    var fetchJson = function (url) {
+      return window.fetch(url, { cache: "no-cache" }).then(function (response) {
+        if (!response.ok) {
+          throw new Error(url + " " + response.status);
+        }
+        return response.json();
+      });
+    };
+    return fetchJson(base + "index.json").then(function (files) {
+      return Promise.all((Array.isArray(files) ? files : []).map(function (fileName) {
+        return fetchJson(base + fileName).then(function (raw) {
+          return { raw: raw, fileName: fileName };
+        }).catch(function (error) {
+          console.warn("問題ファイルを読み込めませんでした:", fileName, error);
+          return null;
+        });
+      }));
+    }).then(function (results) {
+      var genres = [];
+      results.filter(Boolean).forEach(function (result) {
+        var genre = validateGenre(result.raw, result.fileName);
+        if (genre && genres.some(function (g) { return g.id === genre.id; })) {
+          console.warn("ジャンル id が重複しているため読み飛ばします:", genre.id, result.fileName);
+        } else if (genre) {
+          genres.push(genre);
+        }
+      });
+      registerGenres(genres);
+    }).catch(function (error) {
+      console.warn("問題の一覧を読み込めませんでした。数学だけで遊べます:", error);
+      registerGenres([]);
+    });
+  }
+
+  // 両方の端末で同じ並びになるよう、order → id の順にそろえる（数学は最後）
+  function registerGenres(genres) {
+    var list = genres.concat([MATH_GENRE]);
+    list.sort(function (a, b) { return (a.order - b.order) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0); });
+    GENRES.splice.apply(GENRES, [0, GENRES.length].concat(list));
+    loaded = true;
+    poolCache = {};
+    markCache = {};
+  }
+
+  // 選んだ問題（ジャンル×レベル）の並び順。両方の端末で同じになるよう、GENRES の順にそろえる
+  function pickOrder(pick) {
+    var genreIndex = -1;
+    var levelIndex = 0;
+    GENRES.forEach(function (genre, gi) {
+      if (genre.id === pick.genre) {
+        genreIndex = gi;
+        genre.levels.forEach(function (level, li) {
+          if (level.id === pick.level) {
+            levelIndex = li;
+          }
+        });
+      }
+    });
+    return genreIndex * 10 + levelIndex;
+  }
+
+  function pickKey(pick) {
+    return pick.genre + ":" + pick.level;
+  }
+
+  // 以前の形式 { genre, level } も読めるようにする
+  function normalizePicks(input) {
+    var raw = Array.isArray(input.picks) ? input.picks : [{ genre: input.genre, level: input.level }];
+    var seen = {};
+    var picks = [];
+    raw.forEach(function (item) {
+      if (!item) {
+        return;
+      }
+      var genre = null;
+      GENRES.forEach(function (candidate) {
+        if (candidate.id === item.genre) {
+          genre = candidate;
+        }
+      });
+      if (!genre) {
+        return;
+      }
+      var level = genre.levels.some(function (l) { return l.id === item.level; }) ? item.level : genre.levels[0].id;
+      var key = genre.id + ":" + level;
+      if (!seen[key]) {
+        seen[key] = true;
+        picks.push({ genre: genre.id, level: level });
+      }
+    });
+    if (!picks.length) {
+      picks.push({ genre: GENRES[0].id, level: GENRES[0].levels[0].id });
+    }
+    picks.sort(function (a, b) { return pickOrder(a) - pickOrder(b); });
+    return picks;
+  }
+
   function normalizeRules(rules) {
     var input = rules || {};
-    var genre = findGenre(input.genre);
-    var level = genre.levels[0].id;
-    var index;
-    for (index = 0; index < genre.levels.length; index += 1) {
-      if (genre.levels[index].id === input.level) {
-        level = input.level;
-      }
-    }
     return {
       mode: input.mode === "quiz" ? "quiz" : "normal",
       size: window.OthelloGame.normalizeSize(input.size),
-      genre: genre.id,
-      level: level,
+      picks: normalizePicks(input),
       seed: Number(input.seed) >>> 0 || 1
     };
   }
 
-  function levelLabel(rules) {
-    var genre = findGenre(rules.genre);
-    var index;
-    for (index = 0; index < genre.levels.length; index += 1) {
-      if (genre.levels[index].id === rules.level) {
-        return genre.levels[index].label;
-      }
+  // 1つの組み合わせを ON/OFF する（最後の1つは外さない）
+  function togglePick(rules, key) {
+    var parts = String(key).split(":");
+    var picks = rules.picks.filter(function (pick) { return pickKey(pick) !== key; });
+    if (picks.length === rules.picks.length) {
+      picks = rules.picks.concat([{ genre: parts[0], level: parts[1] }]);
     }
-    return "";
+    return picks.length ? picks : rules.picks;
   }
 
+  function hasPick(rules, key) {
+    return rules.picks.some(function (pick) { return pickKey(pick) === key; });
+  }
+
+  function levelLabelOf(pick) {
+    var genre = findGenre(pick.genre);
+    var label = "";
+    genre.levels.forEach(function (level) {
+      if (level.id === pick.level) {
+        label = level.label;
+      }
+    });
+    return label;
+  }
+
+  function describePick(pick) {
+    var genre = findGenre(pick.genre);
+    return genre.icon + " " + genre.label + "（" + levelLabelOf(pick) + "）";
+  }
+
+  // 1つなら「🈷️ 漢字（中学）」、複数なら「🈷️🔤 ミックス（3種類）」
   function describe(rules) {
-    var genre = findGenre(rules.genre);
-    return genre.icon + " " + genre.label + "（" + levelLabel(rules) + "）";
+    var picks = normalizeRules(rules).picks;
+    if (picks.length === 1) {
+      return describePick(picks[0]);
+    }
+    var icons = [];
+    picks.forEach(function (pick) {
+      var icon = findGenre(pick.genre).icon;
+      if (icons.indexOf(icon) === -1) {
+        icons.push(icon);
+      }
+    });
+    return icons.join("") + " ミックス（" + picks.length + "種類）";
   }
 
   // ---- 乱数（種から毎回同じ並びを出す） ----
@@ -129,6 +307,7 @@
   //   漢字・ことわざ・四字熟語：そのレベルの中でいちばん珍しい漢字（「一」のような共通の字を避ける）
   //   英単語：頭文字  一般教養：問題ごとに用意したキーワード(m)  数学：問題の種類の記号
   var markCache = {};
+  var poolCache = {};
 
   function distinctiveMarks(cacheKey, words) {
     if (markCache[cacheKey]) {
@@ -173,7 +352,8 @@
 
   function fromAuthored(random, item) {
     var built = buildChoices(random, item.a, item.w);
-    return { text: item.q, choices: built.choices, answer: built.answer, mark: item.m || Array.from(item.q)[0] };
+    // JSON の問題も "tex"（$…$ の中が TeX）を書けば数式で組む
+    return { text: item.q, tex: typeof item.tex === "string" ? item.tex : "", choices: built.choices, answer: built.answer, mark: item.m || Array.from(item.q)[0] };
   }
 
   // ---- 数学（その場で計算するので、答えは必ず正しい） ----
@@ -194,7 +374,12 @@
     return value < 0 ? "− " + -value : "+ " + value;
   }
 
-  // それぞれ { text, answer, wrongs, mark }。mark は盤面に出す記号
+  function signedTex(value) {
+    return value < 0 ? "- " + -value : "+ " + value;
+  }
+
+  // それぞれ { text, answer, wrongs, mark, tex }。mark は盤面に出す記号。
+  // tex は数式として組むときの問題文（$…$ の中が TeX）。読み込めないときは text をそのまま出す
   var MATH = {
     // 小学：四則計算
     e: function (random) {
@@ -224,14 +409,16 @@
       var x;
       if (kind === 0) {
         a = randomInt(random, 2, 9); x = randomInt(random, -9, 9); b = randomInt(random, -20, 20);
-        return { text: a + "x " + signed(b) + " = " + (a * x + b) + " のとき x = ?", answer: x, wrongs: [x + 1, x - 1, -x === x ? x + 2 : -x], mark: "x" };
+        return { text: a + "x " + signed(b) + " = " + (a * x + b) + " のとき x = ?", answer: x, wrongs: [x + 1, x - 1, -x === x ? x + 2 : -x], mark: "x",
+          tex: "$" + a + "x " + signedTex(b) + " = " + (a * x + b) + "$ のとき $x = ?$" };
       }
       if (kind === 1) {
         a = randomInt(random, 11, 25);
-        return { text: "√" + a * a + " = ?", answer: a, wrongs: [a + 1, a - 1, a + 2], mark: "√" };
+        return { text: "√" + a * a + " = ?", answer: a, wrongs: [a + 1, a - 1, a + 2], mark: "√", tex: "$\\sqrt{" + a * a + "} = ?$" };
       }
       a = randomInt(random, 1, 9); b = randomInt(random, 1, 9);
-      return { text: "(x + " + a + ")(x + " + b + ") を展開したときの x の係数は？", answer: a + b, wrongs: [a * b, a + b + 1, Math.abs(a - b) === a + b ? a + b + 2 : Math.abs(a - b)], mark: "(" };
+      return { text: "(x + " + a + ")(x + " + b + ") を展開したときの x の係数は？", answer: a + b, wrongs: [a * b, a + b + 1, Math.abs(a - b) === a + b ? a + b + 2 : Math.abs(a - b)], mark: "(",
+        tex: "$(x + " + a + ")(x + " + b + ")$ を展開したときの $x$ の係数は？" };
     },
     // 高校：微分係数・定積分
     h: function (random) {
@@ -241,11 +428,14 @@
       var k = randomInt(random, 1, 4);
       if (kind === 0) {
         var answer = 2 * a * k + b;
-        return { text: "f(x) = " + (a === 1 ? "" : a) + "x² " + signed(b) + "x のとき f′(" + k + ") = ?", answer: answer, wrongs: [a * k * k + b * k, answer + 2, 2 * a * k], mark: "f" };
+        // b = 0 のときは「+ 0x」を書かない
+        return { text: "f(x) = " + (a === 1 ? "" : a) + "x²" + (b ? " " + signed(b) + "x" : "") + " のとき f′(" + k + ") = ?", answer: answer, wrongs: [a * k * k + b * k, answer + 2, 2 * a * k], mark: "f",
+          tex: "$f(x) = " + (a === 1 ? "" : a) + "x^2" + (b ? " " + signedTex(b) + "x" : "") + "$ のとき $f'(" + k + ") = ?$" };
       }
       // ∫₀ᵏ (2a·x + b) dx = a·k² + b·k
       var value = a * k * k + b * k;
-      return { text: "∫₀^" + k + " (" + 2 * a + "x " + signed(b) + ") dx = ?", answer: value, wrongs: [2 * a * k + b, value + k, value - k], mark: "∫" };
+      return { text: "∫₀^" + k + " (" + 2 * a + "x" + (b ? " " + signed(b) : "") + ") dx = ?", answer: value, wrongs: [2 * a * k + b, value + k, value - k], mark: "∫",
+        tex: "$\\displaystyle\\int_0^{" + k + "} (" + 2 * a + "x" + (b ? " " + signedTex(b) : "") + ")\\,dx = ?$" };
     },
     // 大学：微分積分（8×8 の空きマス60でも重ならないよう、問題文が80通り以上になる幅にしている）
     u: function (random) {
@@ -255,32 +445,38 @@
       var k;
       if (kind === 0) {
         a = randomInt(random, 2, 15);
-        return { text: "d/dx e^(" + a + "x) の x = 0 での値は？", answer: a, wrongs: [1, a * a, a + 1], mark: "e" };
+        return { text: "d/dx e^(" + a + "x) の x = 0 での値は？", answer: a, wrongs: [1, a * a, a + 1], mark: "e",
+          tex: "$\\dfrac{d}{dx} e^{" + a + "x}$ の $x = 0$ での値は？" };
       }
       if (kind === 1) {
         n = randomInt(random, 2, 15);
-        return { text: "∫₀¹ x^" + n + " dx = ?", answer: fraction(1, n + 1), wrongs: [fraction(1, n), fraction(n, n + 1), fraction(1, n + 2)], mark: "∫" };
+        return { text: "∫₀¹ x^" + n + " dx = ?", answer: fraction(1, n + 1), wrongs: [fraction(1, n), fraction(n, n + 1), fraction(1, n + 2)], mark: "∫",
+          tex: "$\\displaystyle\\int_0^1 x^{" + n + "}\\,dx = ?$" };
       }
       if (kind === 2) {
         a = randomInt(random, 2, 20);
-        return { text: "lim(x→0) sin(" + a + "x) / x = ?", answer: a, wrongs: [1, 0, fraction(1, a)], mark: "→" };
+        return { text: "lim(x→0) sin(" + a + "x) / x = ?", answer: a, wrongs: [1, 0, fraction(1, a)], mark: "→",
+          tex: "$\\displaystyle\\lim_{x \\to 0} \\frac{\\sin " + a + "x}{x} = ?$" };
       }
       if (kind === 3) {
         // d/dx x^n の x = k での値 = n·k^(n−1)
         n = randomInt(random, 2, 6); k = randomInt(random, 1, 4);
         var value = n * Math.pow(k, n - 1);
-        return { text: "d/dx (x^" + n + ") の x = " + k + " での値は？", answer: value, wrongs: [Math.pow(k, n), n * Math.pow(k, n), (n - 1) * Math.pow(k, n - 1)], mark: "d" };
+        return { text: "d/dx (x^" + n + ") の x = " + k + " での値は？", answer: value, wrongs: [Math.pow(k, n), n * Math.pow(k, n), (n - 1) * Math.pow(k, n - 1)], mark: "d",
+          tex: "$\\dfrac{d}{dx} x^{" + n + "}$ の $x = " + k + "$ での値は？" };
       }
       // d/dx log x の x = k での値 = 1/k
       k = randomInt(random, 2, 15);
-      return { text: "d/dx (log x) の x = " + k + " での値は？", answer: fraction(1, k), wrongs: [String(k), fraction(1, k * k), fraction(1, k + 1)], mark: "ℓ" };
+      return { text: "d/dx (log x) の x = " + k + " での値は？", answer: fraction(1, k), wrongs: [String(k), fraction(1, k * k), fraction(1, k + 1)], mark: "ℓ",
+        tex: "$\\dfrac{d}{dx} \\log x$ の $x = " + k + "$ での値は？" };
     }
   };
 
   function fromMath(random, level) {
     var made = (MATH[level] || MATH.e)(random);
     var built = buildChoices(random, made.answer, made.wrongs);
-    return { text: made.text, choices: built.choices, answer: built.answer, mark: made.mark };
+    // 分数の答え（1/3 など）は、数式として組めるときは縦の分数で見せる
+    return { text: made.text, tex: made.tex || "", choices: built.choices, answer: built.answer, mark: made.mark, texChoices: true };
   }
 
   // ---- 盤面への割り当て（同じ問題が盤面に重ならないように） ----
@@ -330,69 +526,93 @@
     return order;
   }
 
-  var mathBoards = {};
+  // 数学：その組み合わせで重ならない問題を count 問、種から順に作っておく
+  var mathLists = {};
 
-  // 数学：盤面全体の最初の問題を、重ならないよう左上から順に決めておく
-  function mathBoard(rules, cellCount) {
-    var key = [rules.seed, rules.level, rules.size].join(":");
-    if (mathBoards[key]) {
-      return mathBoards[key];
+  function mathList(seed, level, count) {
+    var key = [seed, level, count].join(":");
+    if (mathLists[key]) {
+      return mathLists[key];
     }
     var used = {};
     var list = [];
     var index;
-    for (index = 0; index < cellCount; index += 1) {
-      list.push(uniqueMath(rules, index, 0, used));
+    var salt;
+    var question;
+    for (index = 0; index < count; index += 1) {
+      for (salt = 0; salt < 200; salt += 1) {
+        question = fromMath(createRandom(hashString([seed, "math", level, index, salt].join(":"))), level);
+        if (!used[question.text]) {
+          break;
+        }
+      }
+      used[question.text] = true;
+      list.push(question);
     }
-    mathBoards[key] = { list: list, used: used };
-    return mathBoards[key];
+    mathLists[key] = list;
+    return list;
   }
 
-  function uniqueMath(rules, index, attempt, used) {
-    var question;
-    var salt;
-    for (salt = 0; salt < 60; salt += 1) {
-      question = fromMath(createRandom(hashString([rules.seed, "math", rules.level, index, attempt, salt].join(":"))), rules.level);
-      if (!used[question.text]) {
-        break;
-      }
+  var MATH_POOL_SIZE = 64;
+
+  // 選んだ組み合わせの問題をすべて1つの山にし、種で並べ替える
+  function buildPool(rules) {
+    var key = [rules.seed, rules.picks.map(pickKey).join(",")].join("|");
+    if (poolCache[key]) {
+      return poolCache[key];
     }
-    used[question.text] = true;
-    return question;
+    var entries = [];
+    rules.picks.forEach(function (pick) {
+      if (pick.genre === "math") {
+        mathList(rules.seed, pick.level, MATH_POOL_SIZE).forEach(function (question) {
+          entries.push({ pick: pick, math: question });
+        });
+        return;
+      }
+      var bank = levelOf(pick).items || [];
+      bank.forEach(function (item, itemIndex) {
+        entries.push({ pick: pick, itemIndex: itemIndex });
+      });
+    });
+    poolCache[key] = {
+      entries: entries,
+      order: permutation(entries.length, hashString([key, "order"].join(":")))
+    };
+    return poolCache[key];
   }
 
   // マスの問題。attempt はそのマスで何回目の挑戦か（不正解のあとは別の問題になる）
+  //   最初は山の前から空きマスに1つずつ、不正解のあとは盤面で使わなかった残りから出す
   function questionFor(rules, row, col, attempt) {
     var normalized = normalizeRules(rules);
     var tries = attempt || 0;
     var size = normalized.size;
     var cellCount = size * size - 4;
     var index = cellIndex(size, row, col);
-    var random = createRandom(hashString([normalized.seed, normalized.genre, normalized.level, row, col, tries].join(":")));
+    var pool = buildPool(normalized);
+    var total = pool.entries.length;
+    var position = tries === 0 ? index : cellCount + (index * 7 + tries * 13) % Math.max(1, total - cellCount);
+    var entry = pool.entries[pool.order[position % total]];
+    var pick = entry.pick;
+    var random = createRandom(hashString([normalized.seed, pickKey(pick), row, col, tries].join(":")));
     var question;
 
-    if (normalized.genre === "math") {
-      var board = mathBoard(normalized, cellCount);
-      question = tries === 0 ? board.list[index] :
-        uniqueMath(normalized, index, tries, Object.assign({}, board.used));
+    if (entry.math) {
+      question = entry.math;
     } else {
-      var bank = (Data[normalized.genre] && Data[normalized.genre][normalized.level]) || [];
-      var order = permutation(bank.length, hashString([normalized.seed, normalized.genre, normalized.level, "order"].join(":")));
-      // 最初は前から1つずつ、不正解のあとは盤面で使わなかった残りの問題から
-      var position = tries === 0 ? index : cellCount + (index * 7 + tries * 13) % Math.max(1, bank.length - cellCount);
-      var itemIndex = order[position % bank.length];
-      if (normalized.genre === "general") {
-        question = fromAuthored(random, bank[itemIndex]);
+      var level = levelOf(pick);
+      var bank = level.items;
+      if (level.type === "choices") {
+        question = fromAuthored(random, bank[entry.itemIndex]);
       } else {
-        var marks = normalized.genre === "english" ?
+        var marks = level.mark === "first-letter" ?
           bank.map(function (pair) { return pair[0].charAt(0).toUpperCase(); }) :
-          distinctiveMarks(normalized.genre + ":" + normalized.level, bank.map(function (pair) { return pair[0]; }));
-        question = fromPair(random, bank, itemIndex,
-          normalized.genre === "kanji" ? "「{q}」の読みは？" : "「{q}」の意味は？", marks[itemIndex]);
+          distinctiveMarks(pickKey(pick), bank.map(function (pair) { return pair[0]; }));
+        // まちがいの選択肢は同じジャンル・レベルの中から選ぶ（混ぜても不自然にならない）
+        question = fromPair(random, bank, entry.itemIndex, level.template, marks[entry.itemIndex]);
       }
     }
-    question = Object.assign({}, question, { genre: normalized.genre });
-    return question;
+    return Object.assign({}, question, { genre: pick.genre, pick: pick, pickLabel: describePick(pick) });
   }
 
   // 盤面に出す1文字
@@ -404,24 +624,29 @@
     return (Math.floor(Math.random() * 4294967295) >>> 0) || 1;
   }
 
-  // COM が正解する確率（レベルが上がるほど少し下がる）
-  function comAccuracy(rules) {
-    var genre = findGenre(rules.genre);
+  // COM が正解する確率（その問題のレベルが上がるほど少し下がる）
+  function comAccuracy(pick) {
+    var genre = findGenre(pick && pick.genre);
     var index = 0;
-    var i;
-    for (i = 0; i < genre.levels.length; i += 1) {
-      if (genre.levels[i].id === rules.level) {
+    genre.levels.forEach(function (level, i) {
+      if (pick && level.id === pick.level) {
         index = i;
       }
-    }
+    });
     return Math.max(0.5, 0.8 - index * 0.08);
   }
 
   window.OthelloQuiz = {
     GENRES: GENRES,
+    load: load,
+    isLoaded: function () { return loaded; },
     findGenre: findGenre,
     normalizeRules: normalizeRules,
     describe: describe,
+    describePick: describePick,
+    pickKey: pickKey,
+    togglePick: togglePick,
+    hasPick: hasPick,
     questionFor: questionFor,
     markFor: markFor,
     newSeed: newSeed,
