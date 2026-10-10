@@ -18,6 +18,8 @@ LIFF、Firebase Firestore、PeerJS を使った 2 人対戦オセロです。
   - 教養モードの問題（ジャンルごとの JSON）と、その一覧 `index.json`
 - `scripts/update-version.sh`
   - コミット SHA から版情報を更新
+- `scripts/stamp-assets.sh`
+  - 公開時に index.html の js / css の URL に `?v=<コミット>` を付ける（LINE などで古いファイルが使われないように）
 - `scripts/build-question-index.sh`
   - `questions/*.json` の一覧 `questions/index.json` を作る
 

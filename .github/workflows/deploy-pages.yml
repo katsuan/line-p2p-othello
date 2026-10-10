@@ -29,6 +29,9 @@ jobs:
       - name: Generate question file list
         run: sh scripts/build-question-index.sh
 
+      - name: Stamp asset URLs with the version (avoid stale cache in LINE)
+        run: sh scripts/stamp-assets.sh
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
