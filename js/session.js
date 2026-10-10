@@ -68,7 +68,7 @@
       rematch: { outgoing: false, incoming: false },
       game: Game.createFreshGame(),
       status: {
-        message: "LIFF、Firebase、PeerJS の初期化を待っています。",
+        message: "準備しています…",
         transport: "起動中…",
         opponent: "待機中…",
         mode: "マッチング"
@@ -264,6 +264,8 @@
 
     function prepareRoomContext() {
       var params = new URLSearchParams(window.location.search);
+      // 「COMと練習」から来たときは、ルームを開いたあと COM 対戦を選んだ状態にする（URL からはすぐ消える）
+      app.startWithCom = params.get("opponent") === "com";
       updateRoomContext(params.get("room") || "", params.get("join") === "1", true);
     }
 
@@ -695,6 +697,11 @@
             });
           },
           onNewRoom: function () { window.location.href = buildPageUrl(Platform.generateId("room"), false); },
+          onNewComRoom: function () {
+            var url = new URL(buildPageUrl(Platform.generateId("room"), false), window.location.href);
+            url.searchParams.set("opponent", "com");
+            window.location.href = url.toString();
+          },
           onRetryReconnect: play.retryReconnectNow,
           onHardReload: function () { AppPeer.disconnect(); Platform.reload(buildPageUrl(app.roomId, app.joinRequested), true); },
           onStartGame: play.startMatch,
@@ -742,6 +749,10 @@
           }
           return Matchmaking.fetchRoom(app.roomId).then(handleRoomEntry);
         }).then(function () {
+          if (app.startWithCom && app.role === "host") {
+            selectComMode();
+          }
+          app.startWithCom = false;
           finishBoot();
         }).catch(function (error) {
           finishBoot();

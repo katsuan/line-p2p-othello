@@ -356,3 +356,32 @@ button:disabled {
     justify-content: center;
   }
 }
+
+/* ルームがないときの2つの始め方（友だちと対戦／COMと練習） */
+.start-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.start-choice {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  min-height: 84px;
+  padding: 12px 8px;
+  border-radius: 18px;
+  text-align: center;
+}
+
+.start-choice-title {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.start-choice-sub {
+  font-size: 0.78rem;
+  font-weight: 600;
+  opacity: 0.85;
+}

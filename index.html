@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LIFF P2P オセロ</title>
+  <title>オセロ｜LINEの友だちと対戦</title>
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/board.css">
 </head>
@@ -12,15 +12,26 @@
     <section class="panel topbar">
       <div class="title-group">
         <div class="title-row">
-          <h1>LIFF P2P オセロ</h1>
+          <h1>オセロ</h1>
           <span id="versionBadge" class="version-badge" aria-label="コミットバージョン">----</span>
         </div>
       </div>
       <div class="top-actions">
         <div class="room-overview">
           <div id="roomStateLabel" class="field-label">はじめる</div>
-          <div id="roomStateTitle" class="room-state-title">新しい対局を作るか、招待されたルームに参加します。</div>
-          <div id="roomStateHint" class="room-state-hint">友だちと遊ぶ時は、先に対局を作ってから招待します。</div>
+          <div id="roomStateTitle" class="room-state-title">だれと遊びますか？</div>
+          <div id="roomStateHint" class="room-state-hint">友だちとはLINEで招待して対戦します。ひとりならCOMとすぐ練習できます。</div>
+          <!-- ルームがないときの主な2つの始め方。ルームIDでの参加は下の折りたたみ（補助的な操作） -->
+          <div id="startChoices" class="start-choices">
+            <button id="newFriendRoomButton" class="button-primary start-choice" type="button">
+              <span class="start-choice-title">👥 友だちと対戦</span>
+              <span class="start-choice-sub">LINEで招待する</span>
+            </button>
+            <button id="newComRoomButton" class="button-secondary start-choice" type="button">
+              <span class="start-choice-title">🤖 COMと練習</span>
+              <span class="start-choice-sub">ひとりですぐ遊ぶ</span>
+            </button>
+          </div>
           <div id="roomCurrentRow" class="room-current-row hidden">
             <div id="roomCurrentId" class="room-current-id">room-xxxxxx</div>
           </div>
@@ -34,7 +45,7 @@
           </div>
         </div>
         <details id="roomTools" class="room-tools">
-          <summary id="roomToolsSummary">招待されたルームに参加</summary>
+          <summary id="roomToolsSummary">ルームIDで参加</summary>
           <div class="room-tools-body">
             <label class="field-label" for="roomInput">ルームID</label>
             <div class="link-row">
@@ -81,7 +92,7 @@
                 <div id="myLabel" class="player-label">あなた</div>
                 <div id="myScore" class="player-score">2</div>
               </div>
-              <div id="myName" class="player-name">LIFF を初期化中…</div>
+              <div id="myName" class="player-name">読み込み中…</div>
               <div id="myPresence" class="player-presence">接続前</div>
               <div id="myStatus" class="player-status">接続を確認中…</div>
             </div>
@@ -140,15 +151,15 @@
       </div>
 
       <aside class="panel sidebar">
-        <div id="messageBox" class="message-box">LIFF、Firebase、PeerJS の初期化を待っています。</div>
+        <div id="messageBox" class="message-box">準備しています…</div>
 
         <details class="debug-panel">
-          <summary>このゲームについて</summary>
+          <summary>遊び方</summary>
           <div class="debug-grid info-grid">
-            <div class="small info-pill">Firestore はマッチング専用</div>
-            <div class="small info-pill">対局同期は P2P のみ</div>
-            <div class="small info-pill">押せるのは有効な手だけ</div>
-            <div class="small info-pill">両端末で同じ盤面を維持</div>
+            <div class="small info-pill">置ける場所に点が出ます</div>
+            <div class="small info-pill">相手を待つ間はCOMと練習できます</div>
+            <div class="small info-pill">途中で切れても再接続できます</div>
+            <div class="small info-pill">2人の盤面はいつも同じです</div>
           </div>
         </details>
 

@@ -271,9 +271,9 @@
     if (!app.roomId) {
       return {
         label: "はじめる",
-        title: "新しい対局を作るか、ルームIDで参加します。",
-        hint: "友だちと遊ぶ時は、先に対局を作って招待します。",
-        toolsSummary: "別のルームに参加",
+        title: "だれと遊びますか？",
+        hint: "友だちとはLINEで招待して対戦します。ひとりならCOMとすぐ練習できます。",
+        toolsSummary: "ルームIDで参加",
         joinLabel: "参加する",
         newRoomLabel: "新しい対局を作る",
         showCurrentRoom: false,
@@ -294,9 +294,10 @@
         toolsSummary: "別のルームに参加 / 新しい対局",
         joinLabel: "別のルームに参加",
         newRoomLabel: "別の対局を作る",
-        showCurrentRoom: true,
+        // ひとりで遊ぶときはルームID・招待の欄を出さず、盤面の START を主役にする
+        showCurrentRoom: false,
         showShare: false,
-        actionNote: "招待は使いません"
+        actionNote: ""
       };
     }
 
@@ -420,6 +421,9 @@
       joinRoomButton: documentRef.getElementById("joinRoomButton"),
       shareButton: documentRef.getElementById("shareButton"),
       newRoomButton: documentRef.getElementById("newRoomButton"),
+      startChoices: documentRef.getElementById("startChoices"),
+      newFriendRoomButton: documentRef.getElementById("newFriendRoomButton"),
+      newComRoomButton: documentRef.getElementById("newComRoomButton"),
       myCard: documentRef.getElementById("myCard"),
       opponentCard: documentRef.getElementById("opponentCard"),
       myAvatar: documentRef.getElementById("myAvatar"),
@@ -474,6 +478,8 @@
         elements.joinRoomButton.addEventListener("click", handlers.onJoinRoom);
         elements.shareButton.addEventListener("click", handlers.onShareRoom);
         elements.newRoomButton.addEventListener("click", handlers.onNewRoom);
+        elements.newFriendRoomButton.addEventListener("click", handlers.onNewRoom);
+        elements.newComRoomButton.addEventListener("click", handlers.onNewComRoom);
         elements.retryReconnectButton.addEventListener("click", handlers.onRetryReconnect);
         elements.reloadButton.addEventListener("click", handlers.onHardReload);
         elements.resumeContinueButton.addEventListener("click", handlers.onResumeContinue);
@@ -561,23 +567,22 @@
         setAvatar(elements.myAvatar, app.displayName || "あなた", app.pictureUrl || "");
         setAvatar(elements.opponentAvatar, app.opponentDisplayName || "相手", app.opponentPictureUrl || "");
         setHidden(elements.roomCurrentRow, !roomFlow.showCurrentRoom);
-        setHidden(elements.roomCurrentActions, !app.roomId);
+        var isSolo = app.opponentMode === "com";
+        setHidden(elements.roomCurrentActions, !app.roomId || isSolo);
         if (elements.quickReconnectButton) {
           elements.quickReconnectButton.disabled = !app.roomId;
           setText(elements.quickReconnectButton, app.reconnecting ? "再試行" : "再接続");
         }
         setHidden(elements.copyRoomIdButton, !app.roomId);
-        setHidden(elements.roomActionRow, !app.roomId);
+        setHidden(elements.roomActionRow, !app.roomId || isSolo);
         setHidden(elements.shareButton, !roomFlow.showShare);
         setHidden(elements.roomActionNote, roomFlow.showShare || !roomFlow.actionNote);
         if (!roomFlow.showShare && roomFlow.actionNote) {
           setText(elements.roomActionNote, roomFlow.actionNote);
         }
-        if (!app.roomId) {
-          elements.roomTools.open = true;
-        }
-        elements.newRoomButton.classList.toggle("button-primary", !app.roomId);
-        elements.newRoomButton.classList.toggle("button-secondary", !!app.roomId);
+        // ルームがないときは「友だちと対戦／COMと練習」を主役にし、折りたたみの「別の対局を作る」は出さない
+        setHidden(elements.startChoices, !!app.roomId);
+        setHidden(elements.newRoomButton, !app.roomId);
         setCardColorClass(elements.myCard, myCardColor);
         setCardColorClass(elements.opponentCard, opponentCardColor);
         elements.myCard.classList.toggle("active-turn", !!app.myColor && !!currentTurn && currentTurn === app.myColor);
