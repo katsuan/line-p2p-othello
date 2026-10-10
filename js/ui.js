@@ -26,15 +26,18 @@
     element.textContent = pictureUrl ? "" : (name || "?").charAt(0).toUpperCase();
   }
 
-  function createBoardElements(boardElement, onCellClick) {
+  // 盤面のマスを作る。大きさ（6 / 8）が変わったら作り直す
+  function createBoardElements(boardElement, onCellClick, size) {
     var fragment = document.createDocumentFragment();
+    var boardSize = size || Game.BOARD_SIZE;
     var row;
     var col;
     var button;
 
     boardElement.innerHTML = "";
-    for (row = 0; row < Game.BOARD_SIZE; row += 1) {
-      for (col = 0; col < Game.BOARD_SIZE; col += 1) {
+    boardElement.style.setProperty("--board-size", String(boardSize));
+    for (row = 0; row < boardSize; row += 1) {
+      for (col = 0; col < boardSize; col += 1) {
         button = document.createElement("button");
         button.type = "button";
         button.className = "cell";
@@ -467,12 +470,70 @@
       resultCaption: documentRef.getElementById("resultCaption"),
       resultScoreline: documentRef.getElementById("resultScoreline"),
       resultPrimaryButton: documentRef.getElementById("resultPrimaryButton"),
-      resultSecondaryButton: documentRef.getElementById("resultSecondaryButton")
+      resultSecondaryButton: documentRef.getElementById("resultSecondaryButton"),
+      ruleSetup: documentRef.getElementById("ruleSetup"),
+      ruleNormalButton: documentRef.getElementById("ruleNormalButton"),
+      ruleQuizButton: documentRef.getElementById("ruleQuizButton"),
+      sizeChoices: documentRef.getElementById("sizeChoices"),
+      quizRuleRows: documentRef.getElementById("quizRuleRows"),
+      genreChoices: documentRef.getElementById("genreChoices"),
+      levelChoices: documentRef.getElementById("levelChoices"),
+      ruleSummary: documentRef.getElementById("ruleSummary"),
+      ruleBadge: documentRef.getElementById("ruleBadge"),
+      quizOverlay: documentRef.getElementById("quizOverlay"),
+      quizGenre: documentRef.getElementById("quizGenre"),
+      quizText: documentRef.getElementById("quizText"),
+      quizChoices: documentRef.getElementById("quizChoices"),
+      quizResult: documentRef.getElementById("quizResult"),
+      quizGiveUp: documentRef.getElementById("quizGiveUp")
     };
+    var boardClickHandler = null;
+    var renderedLevelGenre = "";
+    var renderedQuizPrompt = null;
+
+    function chip(label, value, attr) {
+      return '<button class="button-chip" type="button" ' + attr + '="' + value + '">' + label + "</button>";
+    }
+
+    function rulesText(app) {
+      var sizeText = app.rules.size + "×" + app.rules.size;
+      return app.rules.mode === "quiz" ?
+        "📚 教養 " + window.OthelloQuiz.describe(app.rules) + "・" + sizeText :
+        "ふつう・" + sizeText;
+    }
 
     return {
       bind: function (handlers) {
+        boardClickHandler = handlers.onBoardClick;
         createBoardElements(elements.board, handlers.onBoardClick);
+        // ルールの選択肢（盤面・ジャンルは固定、レベルはジャンルに合わせて render で作る）
+        elements.sizeChoices.innerHTML = Game.BOARD_SIZES.map(function (size) {
+          return chip(size + "×" + size, size, "data-size");
+        }).join("");
+        elements.genreChoices.innerHTML = window.OthelloQuiz.GENRES.map(function (genre) {
+          return chip(genre.icon + " " + genre.label, genre.id, "data-genre");
+        }).join("");
+        elements.ruleNormalButton.addEventListener("click", function () { handlers.onChangeRules({ mode: "normal" }); });
+        elements.ruleQuizButton.addEventListener("click", function () { handlers.onChangeRules({ mode: "quiz" }); });
+        elements.sizeChoices.addEventListener("click", function (event) {
+          var button = event.target.closest("[data-size]");
+          if (button) handlers.onChangeRules({ size: Number(button.getAttribute("data-size")) });
+        });
+        elements.genreChoices.addEventListener("click", function (event) {
+          var button = event.target.closest("[data-genre]");
+          if (button) handlers.onChangeRules({ genre: button.getAttribute("data-genre"), level: "" });
+        });
+        elements.levelChoices.addEventListener("click", function (event) {
+          var button = event.target.closest("[data-level]");
+          if (button) handlers.onChangeRules({ level: button.getAttribute("data-level") });
+        });
+        elements.quizChoices.addEventListener("click", function (event) {
+          var button = event.target.closest("[data-choice]");
+          if (button) handlers.onQuizAnswer(Number(button.getAttribute("data-choice")));
+        });
+        elements.quizGiveUp.addEventListener("click", handlers.onQuizGiveUp);
+        // パネルの transform などが固定表示の基準にならないよう、問題のシートは body の直下に置く
+        documentRef.body.appendChild(elements.quizOverlay);
         elements.copyRoomIdButton.addEventListener("click", handlers.onCopyRoomId);
         elements.quickReconnectButton.addEventListener("click", handlers.onQuickReconnect);
         elements.joinRoomButton.addEventListener("click", handlers.onJoinRoom);
@@ -509,6 +570,10 @@
       },
 
       render: function (app) {
+        var boardSize = Game.sizeOf(app.game.board);
+        if (elements.board.querySelectorAll(".cell").length !== boardSize * boardSize) {
+          createBoardElements(elements.board, boardClickHandler, boardSize);
+        }
         var buttons = elements.board.querySelectorAll(".cell");
         var validMoves = Game.getValidMoves(app.game.board, app.game.currentTurn);
         var validMap = Game.getMoveMap(validMoves);
@@ -629,6 +694,64 @@
           (isHumanP2PSetup(app) ?
             "黒が先手です。色を変えると START 準備は解除されます。" :
             "黒が先手です。相手とつながったら 2人で START します。"));
+
+        // ---- ルール ----
+        var canEditRules = app.role === "host" && !app.matchConfigured && !app.game.lastMove && !app.game.winner;
+        var isQuiz = app.rules.mode === "quiz";
+        setHidden(elements.ruleSetup, !canEditRules);
+        setHidden(elements.quizRuleRows, !isQuiz);
+        elements.ruleNormalButton.classList.toggle("active", !isQuiz);
+        elements.ruleQuizButton.classList.toggle("active", isQuiz);
+        Array.prototype.forEach.call(elements.sizeChoices.children, function (button) {
+          button.classList.toggle("active", Number(button.getAttribute("data-size")) === app.rules.size);
+        });
+        Array.prototype.forEach.call(elements.genreChoices.children, function (button) {
+          button.classList.toggle("active", button.getAttribute("data-genre") === app.rules.genre);
+        });
+        if (renderedLevelGenre !== app.rules.genre) {
+          renderedLevelGenre = app.rules.genre;
+          elements.levelChoices.innerHTML = window.OthelloQuiz.findGenre(app.rules.genre).levels.map(function (level) {
+            return chip(level.label, level.id, "data-level");
+          }).join("");
+        }
+        Array.prototype.forEach.call(elements.levelChoices.children, function (button) {
+          button.classList.toggle("active", button.getAttribute("data-level") === app.rules.level);
+        });
+        // ゲストはルールを変えられないので、内容だけ見せる
+        setHidden(elements.ruleSummary, canEditRules);
+        setText(elements.ruleSummary, "ルール：" + rulesText(app) + (app.role === "host" ? "" : "（ホストが決めます）"));
+        // 対局中は盤面の上にルールを小さく出す
+        setHidden(elements.ruleBadge, !(app.matchConfigured || app.game.lastMove) || (!isQuiz && boardSize === Game.BOARD_SIZE));
+        setText(elements.ruleBadge, rulesText(app));
+
+        // ---- 教養モードの問題 ----
+        var prompt = app.quizPrompt;
+        setHidden(elements.quizOverlay, !prompt);
+        if (prompt && prompt !== renderedQuizPrompt) {
+          renderedQuizPrompt = prompt;
+          setText(elements.quizGenre, window.OthelloQuiz.describe(app.rules) + (prompt.attempt ? "・このマス" + (prompt.attempt + 1) + "問目" : ""));
+          setText(elements.quizText, prompt.question.text);
+          elements.quizChoices.innerHTML = prompt.question.choices.map(function (choice, index) {
+            return '<button class="quiz-choice" type="button" data-choice="' + index + '"></button>';
+          }).join("");
+          Array.prototype.forEach.call(elements.quizChoices.children, function (button, index) {
+            button.textContent = prompt.question.choices[index];
+          });
+          setText(elements.quizResult, "");
+        }
+        if (prompt) {
+          var answered = prompt.chosen !== null;
+          Array.prototype.forEach.call(elements.quizChoices.children, function (button, index) {
+            button.disabled = answered;
+            button.classList.toggle("is-correct", answered && index === prompt.question.answer);
+            button.classList.toggle("is-wrong", answered && index === prompt.chosen && !prompt.correct);
+          });
+          elements.quizGiveUp.disabled = answered;
+          setText(elements.quizResult, answered ? (prompt.correct ? "⭕ 正解！ 石を置きます" : "❌ 不正解… 相手の番です") : "");
+          elements.quizResult.className = "quiz-result" + (answered ? (prompt.correct ? " is-correct" : " is-wrong") : "");
+        } else {
+          renderedQuizPrompt = null;
+        }
 
         setHidden(elements.startOverlay, !shouldShowStartOverlay(app));
         if (shouldShowStartOverlay(app)) {

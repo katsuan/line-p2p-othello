@@ -1,5 +1,7 @@
 (function (window) {
   var Game = window.OthelloGame;
+  var Quiz = window.OthelloQuiz;
+  var QUIZ_RESULT_MS = 900;
   var RECONNECT_TIMEOUT_MS = 8000;
   var RECONNECT_RETRY_MS = 1500;
   var RECONNECT_HANDOFF_TIMEOUT_MS = 1800;
@@ -60,8 +62,40 @@
         winner: app.game.winner,
         message: app.game.message,
         matchConfigured: app.matchConfigured,
-        hostColor: app.currentHostColor || app.desiredHostColor
+        hostColor: app.currentHostColor || app.desiredHostColor,
+        rules: app.rules,
+        quizAttempts: app.quizAttempts
       };
+    }
+
+    // ---- ルール（ホストが決め、相手に送る） ----
+    function canEditRules() {
+      return app.role === "host" && !app.matchConfigured && !app.game.lastMove && !app.game.winner;
+    }
+
+    function applyRules(rules) {
+      var next = Quiz.normalizeRules(rules);
+      var sizeChanged = next.size !== Game.sizeOf(app.game.board);
+      app.rules = next;
+      if (sizeChanged && !app.matchConfigured) {
+        deps.resetGame();
+      }
+    }
+
+    function changeRules(patch) {
+      if (!canEditRules()) {
+        deps.setMessage("ルールは、ホストが対局を始める前だけ変えられます。");
+        return;
+      }
+      applyRules(Object.assign({}, app.rules, patch));
+      clearStartReady();
+      sendSetupState();
+      deps.render();
+    }
+
+    // 開始するたびに問題の種を作り直す（再戦でも別の問題になる）
+    function rollQuizSeed() {
+      app.rules = Quiz.normalizeRules(Object.assign({}, app.rules, { seed: Quiz.newSeed() }));
     }
 
     function maybeScheduleComTurn() {
@@ -79,11 +113,12 @@
       }
 
       moves = Game.getValidMoves(app.game.board, app.game.currentTurn);
+      var last = Game.sizeOf(app.game.board) - 1;
       for (index = 0; index < moves.length; index += 1) {
         score = moves[index].flips.length;
-        if ((moves[index].row === 0 || moves[index].row === 7) && (moves[index].col === 0 || moves[index].col === 7)) {
+        if ((moves[index].row === 0 || moves[index].row === last) && (moves[index].col === 0 || moves[index].col === last)) {
           score += 100;
-        } else if (moves[index].row === 0 || moves[index].row === 7 || moves[index].col === 0 || moves[index].col === 7) {
+        } else if (moves[index].row === 0 || moves[index].row === last || moves[index].col === 0 || moves[index].col === last) {
           score += 10;
         }
         if (!bestMove || score > bestMove.score) {
@@ -96,8 +131,15 @@
       }
 
       app.comTimer = window.setTimeout(function () {
+        // 教養モードの COM は、レベルに応じた確率で問題に正解する
+        if (app.rules.mode === "quiz" && Math.random() > Quiz.comAccuracy(app.rules)) {
+          applyMiss(bestMove.row, bestMove.col, app.game.currentTurn, "com", app.game.version + 1);
+          deps.render();
+          return;
+        }
         makeMove(bestMove.row, bestMove.col, app.game.currentTurn, "com", app.game.version + 1);
-      }, 420);
+        deps.render();
+      }, app.rules.mode === "quiz" ? 900 : 420);
     }
 
     function applyMatchSettings(hostColor, isRematch) {
@@ -145,7 +187,8 @@
       try {
         AppPeer.send({
           type: "setup-sync",
-          hostColor: app.desiredHostColor
+          hostColor: app.desiredHostColor,
+          rules: app.role === "host" ? app.rules : null
         });
       } catch (error) {
         beginReconnect("開始前の設定同期に失敗しました。 " + error.message);
@@ -165,9 +208,10 @@
         return;
       }
 
+      rollQuizSeed();
       applyMatchSettings(app.desiredHostColor, false);
       try {
-        AppPeer.send({ type: "start", hostColor: app.desiredHostColor });
+        AppPeer.send({ type: "start", hostColor: app.desiredHostColor, rules: app.rules });
         sendProfile();
       } catch (error) {
         beginReconnect("開始メッセージの送信に失敗しました。 " + error.message);
@@ -180,6 +224,7 @@
       }
 
       if (app.opponentMode === "com") {
+        rollQuizSeed();
         applyMatchSettings(app.desiredHostColor, false);
         return;
       }
@@ -191,7 +236,7 @@
 
       try {
         app.localStartReady = true;
-        AppPeer.send({ type: "start-ready", hostColor: app.desiredHostColor });
+        AppPeer.send({ type: "start-ready", hostColor: app.desiredHostColor, rules: app.role === "host" ? app.rules : null });
         deps.setMessage(app.remoteStartReady ?
           "両者の START が揃いました。開始しています。" :
           "あなたは START 準備OKです。相手の START を待っています。");
@@ -299,6 +344,11 @@
       if (payload.hostColor) {
         app.myColor = app.role === "host" ? payload.hostColor : Game.getOpponent(payload.hostColor);
       }
+      if (payload.rules) {
+        app.rules = Quiz.normalizeRules(payload.rules);
+        app.quizAttempts = payload.quizAttempts || {};
+      }
+      app.quizPrompt = null;
       app.game.board = Game.deserializeBoard(payload.board);
       app.game.currentTurn = payload.currentTurn || "";
       app.game.version = Number(payload.version || 0);
@@ -513,6 +563,8 @@
           deps.setMessage("P2P 接続が再開されました。対局を同期しています。");
         } else {
           sendProfile();
+          // つながった時点のルール（教養モード・盤面の大きさなど）を相手にも見せる
+          sendSetupState();
           deps.setMessage("P2P 接続が確立されました。色を決めて、2人とも START を押してください。");
         }
         return;
@@ -557,6 +609,86 @@
       if (app.transportMode === "p2p") {
         try {
           AppPeer.send({ type: "move", color: app.myColor, row: row, col: col, version: nextVersion });
+        } catch (error) {
+          beginReconnect("P2P 送信に失敗しました。 " + error.message);
+        }
+      }
+    }
+
+    // ---- 教養モード：問題を出し、答えで「置く」か「相手の番」にする ----
+    function quizKey(row, col) {
+      return row + "-" + col;
+    }
+
+    function openQuiz(row, col) {
+      var valid = Game.getMoveMap(Game.getValidMoves(app.game.board, app.myColor));
+      if (!valid[quizKey(row, col)] || app.quizPrompt) {
+        return;
+      }
+      var attempt = app.quizAttempts[quizKey(row, col)] || 0;
+      app.quizPrompt = {
+        row: row,
+        col: col,
+        attempt: attempt,
+        question: Quiz.questionFor(app.rules, row, col, attempt),
+        chosen: null
+      };
+      deps.render();
+    }
+
+    // index = 選んだ選択肢（-1 は「わからない」）。結果を少し見せてから反映する
+    function answerQuiz(index) {
+      var prompt = app.quizPrompt;
+      if (!prompt || prompt.chosen !== null) {
+        return;
+      }
+      prompt.chosen = Number(index);
+      prompt.correct = prompt.chosen === prompt.question.answer;
+      deps.render();
+      window.setTimeout(function () {
+        if (app.quizPrompt !== prompt) {
+          return;
+        }
+        app.quizPrompt = null;
+        if (app.game.currentTurn !== app.myColor || app.game.winner) {
+          deps.render();
+          return;
+        }
+        if (prompt.correct) {
+          sendMove(prompt.row, prompt.col);
+        } else {
+          sendMiss(prompt.row, prompt.col);
+        }
+        deps.render();
+      }, QUIZ_RESULT_MS);
+    }
+
+    // 不正解：石は置かず手番を相手へ。そのマスの次の問題は別のものになる
+    function applyMiss(row, col, color, source, version) {
+      var expectedVersion = app.game.version + 1;
+      if ((version && version !== expectedVersion) || app.game.currentTurn !== color) {
+        if (source === "remote") {
+          switchToCom("ピア間で盤面バージョンの不一致を検出しました。");
+        }
+        return false;
+      }
+      var key = quizKey(row, col);
+      app.quizAttempts[key] = (app.quizAttempts[key] || 0) + 1;
+      app.game.version = version || expectedVersion;
+      app.game.message = Game.passTurnAfterMiss(app.game, color);
+      deps.setMessage(source === "com" ? "COM は不正解でした。" + app.game.message.replace("不正解でした。", "") : app.game.message);
+      maybeScheduleComTurn();
+      return true;
+    }
+
+    function sendMiss(row, col) {
+      var nextVersion = app.game.version + 1;
+      if (!applyMiss(row, col, app.myColor, "local", nextVersion)) {
+        return;
+      }
+      if (app.transportMode === "p2p") {
+        try {
+          AppPeer.send({ type: "miss", color: app.myColor, row: row, col: col, version: nextVersion });
         } catch (error) {
           beginReconnect("P2P 送信に失敗しました。 " + error.message);
         }
@@ -635,9 +767,17 @@
       }
       if (data.type === "move") {
         makeMove(Number(data.row), Number(data.col), data.color, "remote", Number(data.version));
+      } else if (data.type === "miss") {
+        applyMiss(Number(data.row), Number(data.col), data.color, "remote", Number(data.version));
       } else if (data.type === "start") {
+        if (data.rules && app.role !== "host") {
+          app.rules = Quiz.normalizeRules(data.rules);
+        }
         applyMatchSettings(data.hostColor, false);
       } else if (data.type === "setup-sync") {
+        if (data.rules && app.role !== "host") {
+          applyRules(data.rules);
+        }
         app.desiredHostColor = data.hostColor || app.desiredHostColor;
         clearStartReady();
         deps.setMessage("開始前の設定が更新されました。色を確認して、2人とも START を押してください。");
@@ -645,6 +785,9 @@
         app.remoteStartReady = true;
         if (data.hostColor) {
           app.desiredHostColor = data.hostColor;
+        }
+        if (data.rules && app.role !== "host") {
+          applyRules(data.rules);
         }
         deps.setMessage(app.localStartReady ?
           "両者の START が揃いました。開始しています。" :
@@ -694,6 +837,9 @@
 
     return {
       applyMatchSettings: applyMatchSettings,
+      openQuiz: openQuiz,
+      answerQuiz: answerQuiz,
+      changeRules: changeRules,
       beginReconnect: beginReconnect,
       connectToRemotePeer: connectToRemotePeer,
       handlePeerData: handlePeerData,

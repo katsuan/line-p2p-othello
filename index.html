@@ -82,7 +82,36 @@
             </div>
           </div>
           <div id="controlHint" class="small host-setup-hint">黒が先手です。ボタンで自分の色だけを切り替えます。</div>
+
+          <!-- ルール（ホストが決める）。教養モードは問題に正解すると石を置ける -->
+          <div id="ruleSetup" class="rule-setup">
+            <div class="rule-row">
+              <span class="host-setup-label">ルール</span>
+              <div class="control-actions">
+                <button id="ruleNormalButton" class="button-chip active" type="button">ふつう</button>
+                <button id="ruleQuizButton" class="button-chip" type="button">📚 教養</button>
+              </div>
+            </div>
+            <div class="rule-row">
+              <span class="host-setup-label">盤面</span>
+              <div id="sizeChoices" class="control-actions"></div>
+            </div>
+            <div id="quizRuleRows" class="hidden">
+              <div class="rule-row">
+                <span class="host-setup-label">ジャンル</span>
+                <div id="genreChoices" class="control-actions rule-wrap"></div>
+              </div>
+              <div class="rule-row">
+                <span class="host-setup-label">レベル</span>
+                <div id="levelChoices" class="control-actions rule-wrap"></div>
+              </div>
+              <div class="small host-setup-hint">置けるマスを押すと4択の問題が出ます。正解すると石を置けて、不正解なら相手の番です。</div>
+            </div>
+          </div>
+          <div id="ruleSummary" class="small rule-summary hidden"></div>
         </div>
+
+        <div id="ruleBadge" class="rule-badge hidden"></div>
 
         <div class="board-head">
           <div id="myCard" class="player-card">
@@ -129,6 +158,15 @@
 
         <div class="board-stage">
           <div id="board" class="board" aria-label="オセロ盤"></div>
+          <div id="quizOverlay" class="quiz-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="quizText">
+            <div class="quiz-card">
+              <div id="quizGenre" class="quiz-genre"></div>
+              <div id="quizText" class="quiz-text"></div>
+              <div id="quizChoices" class="quiz-choices"></div>
+              <div id="quizResult" class="quiz-result" aria-live="polite"></div>
+              <button id="quizGiveUp" class="button-ghost quiz-give-up" type="button">わからない（相手の番にする）</button>
+            </div>
+          </div>
           <div id="startOverlay" class="start-overlay hidden">
             <div class="start-card">
               <div id="startWord" class="start-word">START</div>
@@ -197,6 +235,8 @@
   <script src="js/firebase.js"></script>
   <script src="js/webrtc.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/quiz-data.js"></script>
+  <script src="js/quiz.js"></script>
   <script src="js/platform.js"></script>
   <script src="js/matchmaking.js"></script>
   <script src="js/ui.js"></script>

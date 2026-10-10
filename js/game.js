@@ -1,5 +1,7 @@
 (function (window) {
+  // 盤面の大きさの初期値。教養モードでは 6 / 8 から選べる（最初の4つの石を中央に置くため偶数のみ）
   var BOARD_SIZE = 8;
+  var BOARD_SIZES = [6, 8];
   var BLACK = "B";
   var WHITE = "W";
 
@@ -11,28 +13,39 @@
     return color === BLACK ? "黒" : "白";
   }
 
-  function createInitialBoard() {
+  function normalizeSize(size) {
+    return BOARD_SIZES.indexOf(Number(size)) !== -1 ? Number(size) : BOARD_SIZE;
+  }
+
+  // 盤面の大きさは配列の長さで決まる（どの関数も固定の 8 を使わない）
+  function sizeOf(board) {
+    return board && board.length ? board.length : BOARD_SIZE;
+  }
+
+  function createInitialBoard(size) {
+    var boardSize = normalizeSize(size);
+    var mid = boardSize / 2;
     var board = [];
     var row;
     var col;
 
-    for (row = 0; row < BOARD_SIZE; row += 1) {
+    for (row = 0; row < boardSize; row += 1) {
       board[row] = [];
-      for (col = 0; col < BOARD_SIZE; col += 1) {
+      for (col = 0; col < boardSize; col += 1) {
         board[row][col] = "";
       }
     }
 
-    board[3][3] = WHITE;
-    board[3][4] = BLACK;
-    board[4][3] = BLACK;
-    board[4][4] = WHITE;
+    board[mid - 1][mid - 1] = WHITE;
+    board[mid - 1][mid] = BLACK;
+    board[mid][mid - 1] = BLACK;
+    board[mid][mid] = WHITE;
     return board;
   }
 
-  function createFreshGame() {
+  function createFreshGame(size) {
     return {
-      board: createInitialBoard(),
+      board: createInitialBoard(size),
       currentTurn: BLACK,
       version: 0,
       winner: "",
@@ -47,9 +60,9 @@
     var col;
     var text;
 
-    for (row = 0; row < BOARD_SIZE; row += 1) {
+    for (row = 0; row < sizeOf(board); row += 1) {
       text = "";
-      for (col = 0; col < BOARD_SIZE; col += 1) {
+      for (col = 0; col < sizeOf(board); col += 1) {
         text += board[row][col] || ".";
       }
       rows.push(text);
@@ -59,24 +72,25 @@
   }
 
   function deserializeBoard(rows) {
+    var boardSize = normalizeSize(rows && rows.length);
     var board = [];
     var row;
     var col;
     var rowText;
 
-    for (row = 0; row < BOARD_SIZE; row += 1) {
+    for (row = 0; row < boardSize; row += 1) {
       board[row] = [];
-      rowText = rows && rows[row] ? rows[row] : "........";
-      for (col = 0; col < BOARD_SIZE; col += 1) {
-        board[row][col] = rowText.charAt(col) === "." ? "" : rowText.charAt(col);
+      rowText = rows && rows[row] ? rows[row] : "";
+      for (col = 0; col < boardSize; col += 1) {
+        board[row][col] = rowText.charAt(col) === "." || !rowText.charAt(col) ? "" : rowText.charAt(col);
       }
     }
 
     return board;
   }
 
-  function isOnBoard(row, col) {
-    return row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE;
+  function isOnBoard(board, row, col) {
+    return row >= 0 && row < sizeOf(board) && col >= 0 && col < sizeOf(board);
   }
 
   function getFlips(board, row, col, color) {
@@ -93,7 +107,7 @@
     var pending;
     var flips = [];
 
-    if (!isOnBoard(row, col) || board[row][col]) {
+    if (!isOnBoard(board, row, col) || board[row][col]) {
       return flips;
     }
 
@@ -103,14 +117,14 @@
       currentCol = col + direction[1];
       pending = [];
 
-      while (isOnBoard(currentRow, currentCol) && board[currentRow][currentCol] === opponent) {
+      while (isOnBoard(board, currentRow, currentCol) && board[currentRow][currentCol] === opponent) {
         pending.push({ row: currentRow, col: currentCol });
         currentRow += direction[0];
         currentCol += direction[1];
       }
 
       if (pending.length &&
-          isOnBoard(currentRow, currentCol) &&
+          isOnBoard(board, currentRow, currentCol) &&
           board[currentRow][currentCol] === color) {
         flips = flips.concat(pending);
       }
@@ -129,8 +143,8 @@
       return moves;
     }
 
-    for (row = 0; row < BOARD_SIZE; row += 1) {
-      for (col = 0; col < BOARD_SIZE; col += 1) {
+    for (row = 0; row < sizeOf(board); row += 1) {
+      for (col = 0; col < sizeOf(board); col += 1) {
         flips = getFlips(board, row, col, color);
         if (flips.length) {
           moves.push({ row: row, col: col, flips: flips });
@@ -160,8 +174,8 @@
     var row;
     var col;
 
-    for (row = 0; row < BOARD_SIZE; row += 1) {
-      for (col = 0; col < BOARD_SIZE; col += 1) {
+    for (row = 0; row < sizeOf(board); row += 1) {
+      for (col = 0; col < sizeOf(board); col += 1) {
         if (board[row][col] === BLACK) {
           black += 1;
         } else if (board[row][col] === WHITE) {
@@ -228,8 +242,24 @@
     return colorName(color) === winner ? "win" : "lose";
   }
 
+  // 教養モードで問題に答えられなかったとき：石は置かず、手番を相手に渡す
+  //   相手が置けなければ、そのままもう一度自分の番（通常の「置けない時はパス」と同じ考え方）
+  function passTurnAfterMiss(game, color) {
+    var nextColor = getOpponent(color);
+    if (getValidMoves(game.board, nextColor).length) {
+      game.currentTurn = nextColor;
+      return "不正解でした。" + colorName(nextColor) + "の手番です。";
+    }
+    game.currentTurn = color;
+    return "不正解でした。" + colorName(nextColor) + "は置ける場所がないので、もう一度" + colorName(color) + "の手番です。";
+  }
+
   window.OthelloGame = {
     BOARD_SIZE: BOARD_SIZE,
+    BOARD_SIZES: BOARD_SIZES,
+    normalizeSize: normalizeSize,
+    sizeOf: sizeOf,
+    passTurnAfterMiss: passTurnAfterMiss,
     BLACK: BLACK,
     WHITE: WHITE,
     createFreshGame: createFreshGame,

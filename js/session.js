@@ -67,6 +67,11 @@
       pausePersistence: false,
       rematch: { outgoing: false, incoming: false },
       game: Game.createFreshGame(),
+      // ルール（ふつう / 教養・盤面の大きさ・ジャンル・レベル・問題の種）。ホストが決めて相手に送る
+      rules: window.OthelloQuiz.normalizeRules({}),
+      // 教養モード：マスごとの不正解の回数（次はそのマスで別の問題になる）と、表示中の問題
+      quizAttempts: {},
+      quizPrompt: null,
       status: {
         message: "準備しています…",
         transport: "起動中…",
@@ -167,7 +172,9 @@
     }
 
     function resetGame() {
-      app.game = Game.createFreshGame();
+      app.game = Game.createFreshGame(app.rules.size);
+      app.quizAttempts = {};
+      app.quizPrompt = null;
       app.resultOverlayDismissed = false;
       render();
     }
@@ -210,7 +217,9 @@
         remoteStartReady: app.remoteStartReady,
         matchConfigured: app.matchConfigured,
         myColor: app.myColor,
-        game: app.game
+        game: app.game,
+        rules: app.rules,
+        quizAttempts: app.quizAttempts
       };
 
       try {
@@ -248,6 +257,10 @@
       clearResumeState();
       if (saved.game && saved.game.board) {
         app.game = saved.game;
+      }
+      if (saved.rules) {
+        app.rules = window.OthelloQuiz.normalizeRules(saved.rules);
+        app.quizAttempts = saved.quizAttempts || {};
       }
       return true;
     }
@@ -660,9 +673,19 @@
         ui.bind({
           onBoardClick: function (event) {
             if (app.myColor && !app.spectatorMode && !app.resumePending && app.game.currentTurn === app.myColor && !app.game.winner) {
-              play.sendMove(Number(event.currentTarget.getAttribute("data-row")), Number(event.currentTarget.getAttribute("data-col")));
+              var row = Number(event.currentTarget.getAttribute("data-row"));
+              var col = Number(event.currentTarget.getAttribute("data-col"));
+              // 教養モードは、置く前に問題に答える
+              if (app.rules.mode === "quiz") {
+                play.openQuiz(row, col);
+              } else {
+                play.sendMove(row, col);
+              }
             }
           },
+          onQuizAnswer: play.answerQuiz,
+          onQuizGiveUp: function () { play.answerQuiz(-1); },
+          onChangeRules: play.changeRules,
           onJoinRoom: function () {
             var roomId = ui.getRoomInput();
             if (!roomId) {

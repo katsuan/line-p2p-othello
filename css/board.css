@@ -186,8 +186,9 @@
 
 .board {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  grid-template-rows: repeat(8, 1fr);
+  /* 盤面の大きさ（6 / 8）は ui.js が --board-size で渡す */
+  grid-template-columns: repeat(var(--board-size, 8), 1fr);
+  grid-template-rows: repeat(var(--board-size, 8), 1fr);
   width: 100%;
   aspect-ratio: 1 / 1;
   background: var(--board);
@@ -686,4 +687,146 @@
   .result-card {
     padding: 20px 16px;
   }
+}
+
+/* ---- ルール（ふつう / 教養・盤面・ジャンル・レベル） ---- */
+.rule-setup {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.12);
+}
+
+.rule-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.rule-wrap {
+  flex-wrap: wrap;
+}
+
+#quizRuleRows {
+  display: grid;
+  gap: 10px;
+}
+
+#quizRuleRows.hidden {
+  display: none;
+}
+
+.rule-summary,
+.rule-badge {
+  margin-top: 10px;
+  font-weight: 700;
+}
+
+.rule-badge {
+  margin: 0 0 8px;
+  text-align: center;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+/* ---- 教養モードの問題（盤面の上に出す） ---- */
+/* 盤面の枠に閉じ込めると小さい盤面で窮屈なので、画面の下から出すシートにする（盤面は上に透けて見える） */
+.quiz-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: rgba(10, 30, 20, 0.45);
+}
+
+@media (min-width: 641px) {
+  .quiz-overlay {
+    align-items: center;
+  }
+}
+
+.quiz-overlay.hidden {
+  display: none;
+}
+
+.quiz-card {
+  display: grid;
+  gap: 10px;
+  width: min(100%, 460px);
+  max-height: 100%;
+  overflow: auto;
+  padding: 16px;
+  border-radius: 18px;
+  background: #fffdf7;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+}
+
+.quiz-genre {
+  font-size: 0.8rem;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.quiz-text {
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.quiz-choices {
+  display: grid;
+  gap: 8px;
+}
+
+.quiz-choice {
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 14px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quiz-choice:active:not(:disabled) {
+  background: #f1efe6;
+}
+
+.quiz-choice.is-correct {
+  border-color: #2f7d4f;
+  background: #e5f4ea;
+}
+
+.quiz-choice.is-wrong {
+  border-color: #c24141;
+  background: #fbe9e9;
+}
+
+.quiz-result {
+  min-height: 1.4em;
+  font-weight: 800;
+  text-align: center;
+}
+
+.quiz-result.is-correct {
+  color: #2f7d4f;
+}
+
+.quiz-result.is-wrong {
+  color: #c24141;
+}
+
+.quiz-give-up {
+  justify-self: center;
+  font-size: 0.85rem;
 }
