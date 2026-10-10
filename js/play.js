@@ -325,6 +325,15 @@
       }
 
       if (!AppPeer.isConnected()) {
+        // ホストは友だちを待つ間に START しておける。つながったら「準備OK」を相手に送る
+        if (app.role === "host") {
+          app.localStartReady = !app.localStartReady;
+          deps.setMessage(app.localStartReady ?
+            "準備OKです。友だちが参加して START を押すと始まります。" :
+            "START 準備を取り消しました。");
+          deps.render();
+          return;
+        }
         deps.setMessage("相手との接続が完了してから START できます。");
         return;
       }
@@ -638,6 +647,9 @@
         return;
       }
 
+      // 待っている間にホストが START していたら、つながったあとも準備OKのままにする
+      var readyWhileWaiting = app.role === "host" && !app.matchConfigured && !!app.localStartReady;
+      var firstJoin = app.role === "host" && !app.matchConfigured && app.transportMode === "matchmaking";
       app.reconnecting = false;
       app.reconnectReason = "";
       app.reconnectDeadline = 0;
@@ -663,7 +675,20 @@
           sendProfile();
           // つながった時点のルール（教養モード・盤面の大きさなど）を相手にも見せる
           sendSetupState();
-          deps.setMessage("P2P 接続が確立されました。色を決めて、2人とも START を押してください。");
+          if (readyWhileWaiting) {
+            app.localStartReady = true;
+            try {
+              AppPeer.send({ type: "start-ready", hostColor: app.desiredHostColor, rules: app.rules });
+            } catch (error) {
+              app.localStartReady = false;
+            }
+          }
+          deps.setMessage(readyWhileWaiting ?
+            "友だちが参加しました。あなたは準備OKです。友だちの START で始まります。" :
+            "友だちが参加しました。色を決めて、2人とも START を押してください。");
+          if (firstJoin && deps.notifyJoined) {
+            deps.notifyJoined(app.opponentDisplayName && app.opponentDisplayName !== "参加待ち" ? app.opponentDisplayName : "友だち");
+          }
         }
         return;
       }

@@ -459,8 +459,65 @@
       return false;
     }
 
+    // 友だちが参加したことをホストに知らせる（画面のお知らせ・振動・短い音・タブの題名）
+    var titleTimer = null;
+    function notifyJoined(name) {
+      var text = "🎉 " + name + "が参加しました！";
+      ui.showToast(text);
+      try {
+        if (window.navigator.vibrate) {
+          window.navigator.vibrate([120, 80, 120]);
+        }
+      } catch (error) {}
+      try {
+        var AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+          var audio = new AudioContext();
+          [660, 880].forEach(function (frequency, index) {
+            var oscillator = audio.createOscillator();
+            var gain = audio.createGain();
+            var start = audio.currentTime + index * 0.16;
+            oscillator.frequency.value = frequency;
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.exponentialRampToValueAtTime(0.15, start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.14);
+            oscillator.connect(gain);
+            gain.connect(audio.destination);
+            oscillator.start(start);
+            oscillator.stop(start + 0.15);
+          });
+        }
+      } catch (error) {
+        // 一度も画面に触れていないと音は鳴らせないことがある
+      }
+      // 別のタブ・アプリを見ているときは、題名で気づけるようにする（戻ってきたら元に戻す）
+      if (window.document.hidden) {
+        var original = window.document.title;
+        var flip = false;
+        window.clearInterval(titleTimer);
+        titleTimer = window.setInterval(function () {
+          flip = !flip;
+          window.document.title = flip ? "🔔 " + name + "が参加しました" : original;
+        }, 1000);
+        var restore = function () {
+          if (!window.document.hidden) {
+            window.clearInterval(titleTimer);
+            window.document.title = original;
+            window.document.removeEventListener("visibilitychange", restore);
+          }
+        };
+        window.document.addEventListener("visibilitychange", restore);
+        try {
+          if (window.Notification && window.Notification.permission === "granted") {
+            new window.Notification("オセロ", { body: text.replace("🎉 ", ""), icon: "assets/apple-touch-icon.png" });
+          }
+        } catch (error) {}
+      }
+    }
+
     var play = window.OthelloPlay.create(app, {
       clearRematch: clearRematch,
+      notifyJoined: notifyJoined,
       freshLives: freshLives,
       getRemotePeerId: getRemotePeerId,
       onReconnectTimeout: handleReconnectTimeout,

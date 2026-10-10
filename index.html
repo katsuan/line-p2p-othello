@@ -4,11 +4,30 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>オセロ｜LINEの友だちと対戦</title>
+  <meta name="description" content="LINEの友だちと通信対戦できるオセロ。問題に正解すると石を置ける教養モード、COMとの練習、1台で2人の対戦も。">
+  <meta name="theme-color" content="#14542e">
+  <!-- アイコン（ブラウザのタブ・ホーム画面） -->
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <!-- OGP（LINE・SNS でリンクを送ったときのカード）。画像は絶対 URL が必要 -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="オセロ">
+  <meta property="og:title" content="オセロ｜LINEの友だちと対戦">
+  <meta property="og:description" content="LINEの友だちと通信対戦。問題に正解すると石を置ける教養モード、COMとの練習、1台で2人の対戦も。">
+  <meta property="og:url" content="https://katsuan.github.io/line-p2p-othello/">
+  <meta property="og:image" content="https://katsuan.github.io/line-p2p-othello/assets/ogp.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="ja_JP">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/board.css">
 </head>
 <body class="boot-loading">
   <p class="boot-note" aria-live="polite">準備しています…</p>
+  <!-- 友だちの参加などのお知らせ（数秒で消える） -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <div class="app">
     <section class="panel topbar">
       <div class="title-group">

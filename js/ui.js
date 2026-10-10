@@ -119,7 +119,7 @@
     if (app.resumePending) {
       return "再開方法を選択中";
     }
-    if (isHumanP2PSetup(app)) {
+    if (isHumanP2PSetup(app) || isHostWaiting(app)) {
       return app.localStartReady ? "準備OK" : "START 待ち";
     }
     if (app.opponentMode === "com" && !app.matchConfigured && !app.game.lastMove && !app.game.winner) {
@@ -430,9 +430,18 @@
     return "このルームで続けてもう一戦しますか？";
   }
 
+  // ホストが友だちの参加を待っている（まだつながっていない）開始前
+  function isHostWaiting(app) {
+    return app.role === "host" && app.opponentMode === "human" && app.transportMode === "matchmaking" &&
+      !AppPeer.isConnected() && !app.matchConfigured && !app.game.lastMove && !app.game.winner && !app.reconnecting;
+  }
+
   function shouldShowStartOverlay(app) {
     if (app.game.winner || app.matchConfigured || app.reconnecting || app.resumePending || app.spectatorMode) {
       return false;
+    }
+    if (isHostWaiting(app)) {
+      return true;
     }
     if (app.opponentMode === "com") {
       return app.role === "host";
@@ -441,6 +450,11 @@
   }
 
   function getStartCaption(app) {
+    if (isHostWaiting(app)) {
+      return app.localStartReady ?
+        "準備OKです。友だちが参加して START を押すと始まります。" :
+        "先に START しておくと、参加した友だちが START を押すだけで始まります。";
+    }
     if (app.localTwoPlayer) {
       return "黒の人から交代で打ちます。STARTで始めます。";
     }
@@ -543,6 +557,7 @@
       quizOverlay: documentRef.getElementById("quizOverlay"),
       quizGenre: documentRef.getElementById("quizGenre"),
       quizCountdown: documentRef.getElementById("quizCountdown"),
+      toast: documentRef.getElementById("toast"),
       lifeChoices: documentRef.getElementById("lifeChoices"),
       timeChoices: documentRef.getElementById("timeChoices"),
       quizText: documentRef.getElementById("quizText"),
@@ -610,6 +625,7 @@
     }
 
     var lastApp = null;
+    var toastTimer = null;
     var wasPlaying = null;
     // 数式（KaTeX）を読み込めたら、表示中の問題を数式で組み直す
     function rerenderQuiz() {
@@ -695,6 +711,19 @@
         window.addEventListener("resize", handlers.onResize);
       },
 
+      showToast: function (text) {
+        setText(elements.toast, text);
+        setHidden(elements.toast, false);
+        elements.toast.classList.remove("is-showing");
+        void elements.toast.offsetWidth;
+        elements.toast.classList.add("is-showing");
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(function () {
+          setHidden(elements.toast, true);
+          elements.toast.classList.remove("is-showing");
+        }, 4500);
+      },
+
       getRoomInput: function () {
         return String(elements.roomInput.value || "").trim();
       },
@@ -721,6 +750,7 @@
         }
         var buttons = elements.board.querySelectorAll(".cell");
         elements.board.classList.toggle("is-quiz", app.rules.mode === "quiz" && app.matchConfigured);
+        elements.board.classList.toggle("is-waiting", isHostWaiting(app));
         var validMoves = Game.getValidMoves(app.game.board, app.game.currentTurn);
         var validMap = Game.getMoveMap(validMoves);
         var counts = Game.countDiscs(app.game.board);
@@ -853,7 +883,7 @@
           "黒が先手です。COM はこの端末だけで動きます。" :
           (isHumanP2PSetup(app) ?
             "黒が先手です。色を変えると START 準備は解除されます。" :
-            "黒が先手です。相手とつながったら 2人で START します。"));
+            "黒が先手です。友だちを待つ間に START しておけます。"));
 
         // ---- ルール ----
         var isPostGame = app.role === "host" && !!app.game.winner;
@@ -954,7 +984,19 @@
           var startLabel = !rulesReady ? (app.role === "host" ? "問題を選ぶと START できます" : "ホストが問題を選んでいます") :
             (app.opponentMode === "human" && app.localStartReady ? "準備OK・相手を待っています" : "▶ START");
           var startDisabled = !rulesReady || (app.opponentMode === "com" ? app.role !== "host" : !!app.localStartReady);
-          setText(elements.startWord, "START");
+          var waiting = isHostWaiting(app);
+          // 友だち待ちのあいだは「待っています」と点のアニメーションを出す
+          if (waiting) {
+            // 毎回書き直すとアニメーションが最初に戻るので、まだ出していないときだけ入れる
+            if (!elements.startWord.querySelector(".waiting-dots")) elements.startWord.innerHTML = '友だちを待っています<span class="waiting-dots" aria-hidden="true"><i></i><i></i><i></i></span>';
+          } else {
+            setText(elements.startWord, "START");
+          }
+          elements.startWord.classList.toggle("is-waiting", waiting);
+          if (waiting) {
+            startLabel = !rulesReady ? startLabel : (app.localStartReady ? "✓ 準備OK（取り消す）" : "▶ 先に START しておく");
+            startDisabled = !rulesReady;
+          }
           setText(elements.startCaption, getStartCaption(app));
           setText(elements.startButton, startLabel);
           setText(elements.setupStartButton, startLabel);
