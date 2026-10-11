@@ -119,6 +119,14 @@
             <div id="quizRuleRows" class="hidden">
               <div class="small host-setup-hint">置けるマスを押すと4択の問題が出ます。正解すると石を置けます。不正解のときはライフが減ってもう一度選べ、ライフがなければ相手の番です。石の数が同じなら、ライフが多いほうの勝ちです。</div>
               <div class="rule-row">
+                <span class="host-setup-label">回答</span>
+                <div class="control-actions rule-wrap">
+                  <button class="button-chip" type="button" data-answer-mode="choice">4択</button>
+                  <button class="button-chip" type="button" data-answer-mode="input">✏️ 入力</button>
+                </div>
+              </div>
+              <div id="answerModeNote" class="small host-setup-hint hidden">入力：漢字の読み（ひらがな）・数学・一般教養は文字で答えます。英単語・ことわざ・四字熟語の意味は4択のままです。</div>
+              <div class="rule-row">
                 <span class="host-setup-label">ライフ</span>
                 <div id="lifeChoices" class="control-actions rule-wrap"></div>
               </div>
@@ -210,6 +218,12 @@
               </div>
               <div id="quizText" class="quiz-text"></div>
               <div id="quizChoices" class="quiz-choices"></div>
+              <!-- 入力で答えるとき（ひらがな・カタカナ、全角・半角はどちらでもよい） -->
+              <form id="quizInputForm" class="quiz-input hidden" autocomplete="off">
+                <input id="quizInput" class="quiz-input-field" type="text" inputmode="text" enterkeyhint="done"
+                  autocapitalize="off" spellcheck="false" placeholder="答えを入力" aria-label="答え">
+                <button id="quizInputSubmit" class="button-primary quiz-input-submit" type="submit">答える</button>
+              </form>
               <div id="quizResult" class="quiz-result" aria-live="polite"></div>
               <button id="quizGiveUp" class="button-ghost quiz-give-up" type="button">わからない（相手の番にする）</button>
             </div>

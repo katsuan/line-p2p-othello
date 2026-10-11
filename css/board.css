@@ -1134,3 +1134,44 @@
   from { transform: translate(-50%, -16px); opacity: 0; }
   to { transform: translate(-50%, 0); opacity: 1; }
 }
+
+/* 入力で答えるとき */
+.quiz-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.quiz-input.hidden {
+  display: none;
+}
+
+.quiz-input-field {
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 14px;
+  background: #fff;
+  color: inherit;
+  /* 16px 未満だと iPhone で入力時に画面が拡大されるため */
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.quiz-input-field.is-correct {
+  border-color: #2f7d4f;
+  background: #e5f4ea;
+}
+
+.quiz-input-field.is-wrong {
+  border-color: #c24141;
+  background: #fbe9e9;
+}
+
+.quiz-input-submit {
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 14px;
+}

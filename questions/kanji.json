@@ -8,6 +8,7 @@
       "id": "e",
       "label": "小学",
       "type": "pairs",
+      "input": true,
       "template": "「{q}」の読みは？",
       "mark": "rare-kanji",
       "items": [
@@ -87,6 +88,7 @@
       "id": "j",
       "label": "中学",
       "type": "pairs",
+      "input": true,
       "template": "「{q}」の読みは？",
       "mark": "rare-kanji",
       "items": [
@@ -164,6 +166,7 @@
       "id": "h",
       "label": "高校",
       "type": "pairs",
+      "input": true,
       "template": "「{q}」の読みは？",
       "mark": "rare-kanji",
       "items": [

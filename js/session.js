@@ -811,6 +811,7 @@
             }
           },
           onQuizAnswer: play.answerQuiz,
+          onQuizText: play.answerQuizText,
           onQuizGiveUp: function () { play.answerQuiz(-1); },
           onChangeRules: play.changeRules,
           onJoinRoom: function () {

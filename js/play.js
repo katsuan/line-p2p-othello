@@ -127,6 +127,12 @@
 
     // 開始するたびに問題の種を作り直す（再戦でも別の問題になる）
     var TIME_UP = -2;
+    var TYPED_WRONG = -3;
+
+    // 入力で答える問題か（設定が「入力」で、その問題が入力に向いているとき）
+    function isInputQuestion(question) {
+      return app.rules.answerMode === "input" && !!question.canInput;
+    }
 
     function currentQuestion(row, col) {
       return Quiz.questionAt(app.rules, app.quizAttempts, app.quizRetries, row, col);
@@ -209,7 +215,8 @@
         attempt: attempt,
         question: question,
         chosen: null,
-        byCom: true
+        byCom: true,
+        inputMode: isInputQuestion(question)
       };
       app.comTimer = window.setTimeout(function () {
         app.opponentQuiz = watching;
@@ -217,6 +224,8 @@
         app.comTimer = window.setTimeout(function () {
           watching.chosen = correct ? question.answer : wrongs[Math.floor(Math.random() * wrongs.length)];
           watching.correct = correct;
+          // 入力形式のときは、COM も選んだ答えを「入力した」ように見せる
+          watching.typed = watching.inputMode ? String(question.choices[watching.chosen]) : "";
           deps.render();
           app.comTimer = window.setTimeout(function () {
             app.opponentQuiz = null;
@@ -764,6 +773,7 @@
         chosen: null,
         deadline: app.rules.timeLimit ? Date.now() + app.rules.timeLimit * 1000 : 0
       };
+      prompt.inputMode = isInputQuestion(prompt.question);
       app.quizPrompt = prompt;
       // 回答タイム：時間が来たら「時間切れ」（不正解あつかい）
       deps.stopTimer("quizTimer");
@@ -811,12 +821,22 @@
         color: opponentColor,
         question: currentQuestion(row, col),
         chosen: null,
+        inputMode: isInputQuestion(currentQuestion(row, col)),
         deadline: app.rules.timeLimit ? Date.now() + app.rules.timeLimit * 1000 : 0
       };
     }
 
     // index = 選んだ選択肢（-1 は「わからない」）。結果を少し見せてから反映する
-    function answerQuiz(index) {
+    // 入力で答えたとき：合っていれば正解の番号、ちがえば TYPED_WRONG として answerQuiz に渡す
+    function answerQuizText(text) {
+      var prompt = app.quizPrompt;
+      if (!prompt || prompt.chosen !== null || !prompt.inputMode || !String(text || "").trim()) {
+        return;
+      }
+      answerQuiz(Quiz.checkInput(prompt.question, text) ? prompt.question.answer : TYPED_WRONG, String(text).trim().slice(0, 40));
+    }
+
+    function answerQuiz(index, typed) {
       var prompt = app.quizPrompt;
       if (!prompt || prompt.chosen !== null) {
         return;
@@ -824,7 +844,8 @@
       deps.stopTimer("quizTimer");
       prompt.chosen = Number(index);
       prompt.correct = prompt.chosen === prompt.question.answer;
-      sendQuizProgress({ type: "quiz-choice", chosen: prompt.chosen });
+      prompt.typed = typeof typed === "string" ? typed : "";
+      sendQuizProgress({ type: "quiz-choice", chosen: prompt.chosen, typed: prompt.typed });
       deps.render();
       window.setTimeout(function () {
         if (app.quizPrompt !== prompt) {
@@ -992,6 +1013,7 @@
         if (app.opponentQuiz && app.opponentQuiz.chosen === null) {
           app.opponentQuiz.chosen = Number(data.chosen);
           app.opponentQuiz.correct = app.opponentQuiz.chosen === app.opponentQuiz.question.answer;
+          app.opponentQuiz.typed = typeof data.typed === "string" ? data.typed.slice(0, 40) : "";
         }
       } else if (data.type === "profile") {
         deps.setOpponentProfile(data.displayName || "対戦相手", data.pictureUrl || "");
@@ -1039,6 +1061,7 @@
       applyMatchSettings: applyMatchSettings,
       openQuiz: openQuiz,
       answerQuiz: answerQuiz,
+      answerQuizText: answerQuizText,
       changeRules: changeRules,
       beginReconnect: beginReconnect,
       connectToRemotePeer: connectToRemotePeer,

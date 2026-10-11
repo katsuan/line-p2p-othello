@@ -74,6 +74,8 @@
         type: type,
         template: isText(level.template) ? level.template : "「{q}」の意味は？",
         mark: level.mark === "first-letter" ? "first-letter" : "rare-kanji",
+        // 入力で答えられるレベルか（読み・短い答えなど）。意味を答える問題は言い回しが多いので false
+        input: level.input === true,
         items: items
       };
     }).filter(Boolean);
@@ -206,6 +208,8 @@
       size: window.OthelloGame.normalizeSize(input.size),
       picks: normalizePicks(input),
       lives: pickChoice(input.lives, LIFE_CHOICES, DEFAULT_LIVES),
+      // 回答の形式："choice"（4択）/ "input"（文字で入力。入力に向かない問題は4択のまま）
+      answerMode: input.answerMode === "input" ? "input" : "choice",
       timeLimit: pickChoice(input.timeLimit, TIME_CHOICES, DEFAULT_TIME),
       seed: Number(input.seed) >>> 0 || 1
     };
@@ -641,7 +645,12 @@
         question = fromPair(random, bank, entry.itemIndex, level.template, marks[entry.itemIndex]);
       }
     }
-    return Object.assign({}, question, { genre: pick.genre, pick: pick, pickLabel: describePick(pick) });
+    return Object.assign({}, question, {
+      genre: pick.genre,
+      pick: pick,
+      pickLabel: describePick(pick),
+      canInput: entry.math ? true : !!levelOf(pick).input
+    });
   }
 
   // 盤面に出す1文字
@@ -704,6 +713,21 @@
     return free[hashString([normalized.seed, "retry", used].join(":")) % free.length];
   }
 
+  // 入力した答えをくらべやすい形にそろえる（全角/半角・カタカナ/ひらがな・空白・記号のゆれを吸収）
+  function normalizeAnswer(text) {
+    return String(text == null ? "" : text)
+      .normalize("NFKC")
+      .toLowerCase()
+      .replace(/[\s・.,、。]/g, "")
+      .replace(/[−–—]/g, "-")
+      .replace(/[\u30a1-\u30f6]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 0x60); });
+  }
+
+  function checkInput(question, text) {
+    var typed = normalizeAnswer(text);
+    return typed !== "" && typed === normalizeAnswer(question.choices[question.answer]);
+  }
+
   function newSeed() {
     return (Math.floor(Math.random() * 4294967295) >>> 0) || 1;
   }
@@ -724,6 +748,7 @@
     GENRES: GENRES,
     load: load,
     isReady: isReady,
+    checkInput: checkInput,
     LIFE_CHOICES: LIFE_CHOICES,
     TIME_CHOICES: TIME_CHOICES,
     currentPosition: currentPosition,

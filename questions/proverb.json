@@ -8,6 +8,7 @@
       "id": "kotowaza",
       "label": "ことわざ",
       "type": "pairs",
+      "input": false,
       "template": "「{q}」の意味は？",
       "mark": "rare-kanji",
       "items": [
@@ -81,6 +82,7 @@
       "id": "yoji",
       "label": "四字熟語",
       "type": "pairs",
+      "input": false,
       "template": "「{q}」の意味は？",
       "mark": "rare-kanji",
       "items": [

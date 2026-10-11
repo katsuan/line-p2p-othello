@@ -8,6 +8,7 @@
       "id": "j",
       "label": "中学",
       "type": "pairs",
+      "input": false,
       "template": "「{q}」の意味は？",
       "mark": "first-letter",
       "items": [
@@ -81,6 +82,7 @@
       "id": "h",
       "label": "高校",
       "type": "pairs",
+      "input": false,
       "template": "「{q}」の意味は？",
       "mark": "first-letter",
       "items": [
@@ -154,6 +156,7 @@
       "id": "u",
       "label": "大学",
       "type": "pairs",
+      "input": false,
       "template": "「{q}」の意味は？",
       "mark": "first-letter",
       "items": [
