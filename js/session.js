@@ -97,6 +97,9 @@
       watchOpponent: loadWatchOpponent(),
       // 1台で2人：COM の代わりに、同じ端末で黒と白を交代で打つ
       localTwoPlayer: false,
+      // 友だちを待つ間の COM 練習（ルームは開いたまま。友だちが来たら始め方を選ぶ）
+      practiceWhileWaiting: false,
+      spectatorPractice: false,
       status: {
         message: "準備しています…",
         transport: "起動中…",
@@ -248,6 +251,7 @@
         role: app.role,
         opponentMode: app.opponentMode,
         localTwoPlayer: app.localTwoPlayer,
+        practiceWhileWaiting: app.practiceWhileWaiting,
         desiredHostColor: app.desiredHostColor,
         currentHostColor: app.currentHostColor,
         hostTransferred: app.hostTransferred,
@@ -288,6 +292,7 @@
 
       app.opponentMode = saved.opponentMode || app.opponentMode;
       app.localTwoPlayer = app.opponentMode === "com" && !!saved.localTwoPlayer;
+      app.practiceWhileWaiting = app.opponentMode === "com" && !!saved.practiceWhileWaiting;
       app.desiredHostColor = saved.desiredHostColor || app.desiredHostColor;
       app.currentHostColor = saved.currentHostColor || app.currentHostColor;
       app.hostTransferred = !!saved.hostTransferred;
@@ -533,7 +538,8 @@
     });
 
     function subscribeToRoom() {
-      if (app.roomUnsubscribe || !app.roomId || app.opponentMode === "com") {
+      // COM 対戦ではルームを見張らない。ただし友だち待ちの練習中は、参加に気づけるよう見張り続ける
+      if (app.roomUnsubscribe || !app.roomId || (app.opponentMode === "com" && !app.practiceWhileWaiting)) {
         return;
       }
       app.roomUnsubscribe = Matchmaking.subscribeRoom(app.roomId, function (roomData) {
@@ -627,10 +633,13 @@
         app.transportMode = "com";
         setOpponentProfile(app.localTwoPlayer ? "白の人" : "COM", "");
         setTransport("ローカル");
-        setMode(app.localTwoPlayer ? "1台で2人" : "COM 対戦");
+        setMode(app.localTwoPlayer ? "1台で2人" : (app.practiceWhileWaiting ? "練習中（友だち待ち）" : "COM 対戦"));
         setOpponentStatus(app.matchConfigured ? "対局中" : "START 待ち");
         setMessage(app.matchConfigured && !app.game.winner ? "続きから遊べます。" : "START を押してください。");
         play.resumeComTurn();
+        if (app.practiceWhileWaiting) {
+          subscribeToRoom();
+        }
         render();
         return Promise.resolve();
       }
@@ -693,6 +702,7 @@
       }
       app.opponentMode = "human";
       app.localTwoPlayer = false;
+      app.practiceWhileWaiting = false;
       app.transportMode = "matchmaking";
       clearResumeState();
       clearStartReady();
@@ -715,6 +725,7 @@
         return;
       }
       app.localTwoPlayer = local === true;
+      app.practiceWhileWaiting = false;
       app.opponentMode = "com";
       app.transportMode = "com";
       clearResumeState();

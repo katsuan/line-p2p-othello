@@ -314,6 +314,21 @@
       };
     }
 
+    if (app.practiceWhileWaiting) {
+      return {
+        label: "練習中",
+        title: app.game.winner ? "COM との練習が終わりました。" : "友だちを待つ間、COM と練習中です。",
+        hint: "友だちが参加したらお知らせします。そのあと、友だちと最初から対戦するか、今の盤面を続けるか選べます。",
+        toolsSummary: "別のルームに参加 / 新しい対局",
+        joinLabel: "別のルームに参加",
+        newRoomLabel: "別の対局を作る",
+        // 練習中も招待は続けられるようにする
+        showCurrentRoom: true,
+        showShare: true,
+        actionNote: ""
+      };
+    }
+
     if (app.localTwoPlayer) {
       return {
         label: "1台で2人",
@@ -451,9 +466,7 @@
 
   function getStartCaption(app) {
     if (isHostWaiting(app)) {
-      return app.localStartReady ?
-        "準備OKです。友だちが参加して START を押すと始まります。" :
-        "先に START しておくと、参加した友だちが START を押すだけで始まります。";
+      return "友だちが参加したらお知らせします。待つ間は COM と練習できます（練習はあとで友だちとの対戦に切り替えられます）。";
     }
     if (app.localTwoPlayer) {
       return "黒の人から交代で打ちます。STARTで始めます。";
@@ -832,7 +845,7 @@
           setAvatar(elements.opponentAvatar, app.opponentDisplayName || "相手", app.opponentPictureUrl || "");
         }
         setHidden(elements.roomCurrentRow, !roomFlow.showCurrentRoom);
-        var isSolo = app.opponentMode === "com";
+        var isSolo = app.opponentMode === "com" && !app.practiceWhileWaiting;
         setHidden(elements.roomCurrentActions, !app.roomId || isSolo || (roomFlow.showShare && !app.reconnecting));
         if (elements.quickReconnectButton) {
           elements.quickReconnectButton.disabled = !app.roomId;
@@ -862,12 +875,22 @@
 
         setHidden(elements.resumeNotice, !(app.resumePending || app.spectatorMode));
         setHidden(elements.resumeActions, !app.resumePending);
+        // 練習中に友だちが来たときは「友だちと最初から対戦」を主役にする
+        var practiceJoin = app.resumePending && app.practiceWhileWaiting;
         if (app.resumePending) {
-          setText(elements.resumeText,
+          setText(elements.resumeText, practiceJoin ?
+            "🎉 友だちが参加しました！ 友だちと最初から対戦するか、今の盤面を友だちと続けるか選んでください。" :
             (app.resumeRequesterName || "相手") + " が戻りました。今の盤面から再開するか、最初からやり直すか選んでください。");
         } else if (app.spectatorMode) {
-          setText(elements.resumeText, "相手が COM で継続中です。今の盤面を表示しています。再開方法の選択を待っています。");
+          setText(elements.resumeText, app.spectatorPractice ?
+            "ホストが COM と練習中です。始め方を選ぶまで、今の盤面を見て待っています。" :
+            "相手が COM で継続中です。今の盤面を表示しています。再開方法の選択を待っています。");
         }
+        setText(elements.resumeContinueButton, practiceJoin ? "今の盤面を友だちと続ける" : "今の盤面から再開");
+        setText(elements.resumeRestartButton, practiceJoin ? "友だちと最初から対戦" : "最初からやり直す");
+        elements.resumeRestartButton.className = practiceJoin ? "button-primary" : "button-secondary";
+        elements.resumeContinueButton.className = practiceJoin ? "button-secondary" : "button-primary";
+        elements.resumeActions.classList.toggle("is-restart-first", practiceJoin);
 
         setHidden(elements.hostSetupPanel, !(
           app.transportMode !== "reconnecting" &&
@@ -898,7 +921,7 @@
           "黒が先手です。COM はこの端末だけで動きます。" :
           (isHumanP2PSetup(app) ?
             "黒が先手です。色を変えると START 準備は解除されます。" :
-            "黒が先手です。友だちを待つ間に START しておけます。"));
+            "黒が先手です。友だちを待つ間、START で COM と練習できます。"));
 
         // ---- ルール ----
         var isPostGame = app.role === "host" && !!app.game.winner;
@@ -1037,7 +1060,7 @@
           }
           elements.startWord.classList.toggle("is-waiting", waiting);
           if (waiting) {
-            startLabel = !rulesReady ? startLabel : (app.localStartReady ? "✓ 準備OK（取り消す）" : "▶ 先に START しておく");
+            startLabel = !rulesReady ? startLabel : "▶ 待つ間 COM と練習する";
             startDisabled = !rulesReady;
           }
           setText(elements.startCaption, getStartCaption(app));

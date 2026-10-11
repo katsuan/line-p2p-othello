@@ -334,13 +334,9 @@
       }
 
       if (!AppPeer.isConnected()) {
-        // ホストは友だちを待つ間に START しておける。つながったら「準備OK」を相手に送る
-        if (app.role === "host") {
-          app.localStartReady = !app.localStartReady;
-          deps.setMessage(app.localStartReady ?
-            "準備OKです。友だちが参加して START を押すと始まります。" :
-            "START 準備を取り消しました。");
-          deps.render();
+        // ホストは友だちを待つ間、このルームのまま COM と練習できる（参加したら知らせて、始め方を選ぶ）
+        if (app.role === "host" && app.opponentMode === "human") {
+          startPracticeWhileWaiting();
           return;
         }
         deps.setMessage("相手との接続が完了してから START できます。");
@@ -357,6 +353,21 @@
       } catch (error) {
         beginReconnect("開始メッセージの送信に失敗しました。 " + error.message);
       }
+    }
+
+    function startPracticeWhileWaiting() {
+      app.practiceWhileWaiting = true;
+      app.opponentMode = "com";
+      app.transportMode = "com";
+      clearStartReady();
+      deps.setOpponentProfile("COM", "");
+      deps.setTransport("ローカル");
+      deps.setMode("練習中（友だち待ち）");
+      deps.setOpponentStatus("COM");
+      rollQuizSeed();
+      applyMatchSettings(app.desiredHostColor, false);
+      deps.setMessage("友だちを待つ間、COM と練習します。友だちが参加したらお知らせします。");
+      deps.render();
     }
 
     function sendStateSnapshot() {
@@ -424,16 +435,23 @@
       app.staleGuest = false;
       deps.stopTimer("comTimer");
       app.resumePending = true;
-      app.resumeRequesterName = app.opponentDisplayName || "相手";
+      var practice = !!app.practiceWhileWaiting;
+      app.resumeRequesterName = practice ? "友だち" : (app.opponentDisplayName || "相手");
       app.pendingPeerTarget = "";
-      deps.setTransport("復帰確認");
-      deps.setMode("復帰選択");
-      deps.setOpponentStatus("復帰しました");
-      deps.setMessage((app.resumeRequesterName || "相手") + " が戻りました。再開方法を選んでください。");
+      deps.setTransport(practice ? "友だちが参加" : "復帰確認");
+      deps.setMode(practice ? "始め方を選択" : "復帰選択");
+      deps.setOpponentStatus(practice ? "参加しました" : "復帰しました");
+      deps.setMessage(practice ?
+        "友だちが参加しました。最初から対戦するか、今の盤面を友だちと続けるか選んでください。" :
+        (app.resumeRequesterName || "相手") + " が戻りました。再開方法を選んでください。");
+      if (practice && deps.notifyJoined) {
+        deps.notifyJoined("友だち");
+      }
       try {
         sendProfile();
         AppPeer.send({
           type: "resume-preview",
+          practice: practice,
           displayName: app.displayName || "LINE ユーザー",
           pictureUrl: app.pictureUrl || "",
           payload: buildStatePayload("resume-preview")
@@ -477,6 +495,7 @@
       clearResumeState();
       clearStartReady();
       app.spectatorMode = true;
+      app.spectatorPractice = !!data.practice;
       app.opponentMode = "human";
       app.transportMode = "spectator";
       if (data.displayName || data.pictureUrl) {
@@ -486,7 +505,9 @@
       deps.setTransport("観戦中");
       deps.setMode("復帰待機");
       deps.setOpponentStatus("選択待ち");
-      deps.setMessage("相手が COM で継続中です。今の盤面を表示しています。再開方法の選択を待っています。");
+      deps.setMessage(app.spectatorPractice ?
+        "ホストが COM と練習中です。始め方を選ぶまで、今の盤面を見て待っています。" :
+        "相手が COM で継続中です。今の盤面を表示しています。再開方法の選択を待っています。");
       deps.render();
     }
 
@@ -512,6 +533,7 @@
       if (!app.resumePending || !AppPeer.isConnected()) {
         return;
       }
+      app.practiceWhileWaiting = false;
       clearResumeState();
       clearStartReady();
       app.opponentMode = "human";
@@ -537,9 +559,14 @@
       if (!app.resumePending || !AppPeer.isConnected()) {
         return;
       }
+      app.practiceWhileWaiting = false;
       clearResumeState();
       clearStartReady();
       app.opponentMode = "human";
+      // ここからは友だちとの通信対戦（COM のままだと手が相手に送られない）
+      app.transportMode = "p2p";
+      deps.setTransport("WebRTC 接続済み");
+      deps.setOpponentStatus("接続済み");
       try {
         AppPeer.send({
           type: "resume-restart",
@@ -638,6 +665,22 @@
     }
 
     function startP2PPlay() {
+      if (app.practiceWhileWaiting && app.role === "host") {
+        if (app.matchConfigured && !app.game.winner) {
+          // COM と練習中に友だちが来た：知らせて、最初から対戦するか今の盤面を続けるか選ぶ
+          beginResumeChoice();
+          return;
+        }
+        // 練習が終わっていたら、そのまま友だちとの対局の準備へ
+        app.practiceWhileWaiting = false;
+        app.matchConfigured = false;
+        app.currentHostColor = "";
+        app.myColor = "";
+        app.transportMode = "matchmaking";
+        deps.clearRematch();
+        deps.resetGame();
+        deps.setOpponentProfile("友だち", "");
+      }
       if (app.transportMode === "com" && app.matchConfigured && !app.game.winner) {
         beginResumeChoice();
         return;
@@ -1029,6 +1072,9 @@
         clearResumeState();
         clearStartReady();
         app.opponentMode = "human";
+        app.transportMode = "p2p";
+        deps.setTransport("WebRTC 接続済み");
+        deps.setOpponentStatus("接続済み");
         app.currentHostColor = data.hostColor || app.currentHostColor;
         app.desiredHostColor = data.hostColor || app.desiredHostColor;
         prepareRematchSetup();

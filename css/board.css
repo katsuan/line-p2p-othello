@@ -1175,3 +1175,8 @@
   padding: 0 16px;
   border-radius: 14px;
 }
+
+/* 練習中に友だちが来たときは「友だちと最初から対戦」を先に並べる */
+#resumeActions.is-restart-first #resumeRestartButton {
+  order: -1;
+}
