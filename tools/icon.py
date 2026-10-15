@@ -11,11 +11,12 @@ O に棒が刺さった Q の形。黒い矢印はこの石の下から出る。
   assets/logo.svg … 横長のロゴ「HiQRi」（H・i・R・i は Jua。Hi は黒い石の上に白い字、Ri は白い石の上に黒い字で、間の Q が黒から白へひっくり返るところ。Q はアイコンと同じ形（盤の線は除く））
   assets/ogp.png  … 共有したときの画像（1200×630）
 
-使い方: python3 tools/icon.py（tools/brandkit.py を使う）
+使い方: python3 tools/icon.py（となりの line-share/tools/brandkit.py を使う）
 """
 import math
 from pathlib import Path
 
+import brandkit_path  # noqa: F401（となりの line-share/tools/brandkit.py を読めるようにする）
 from brandkit import Brand, arc, arrow_head, centered, polar
 
 ROOT = Path(__file__).resolve().parent.parent
