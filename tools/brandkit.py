@@ -13,7 +13,7 @@
   "bg"（背景と同じグラデーション。白い形のまわりを削って見分けやすくするのに使う）、(r, g, b)（色。紙吹雪など）
   "deco": True を付けた図形はアイコンだけに描き、ロゴの Q には入れない（まわりの飾り）
 
-このファイルは pomodoro・countdown・gender-reveal・line-p2p-othello の tools/ に同じものを置く（直したらすべてそろえる）。
+このファイルは pomodoro・countdown・gender-reveal・line-p2p-othello・qji の tools/ に同じものを置く（直したらすべてそろえる）。
 Pillow・fontTools・Jua（SIL Open Font License 1.1、~/Library/Fonts/Jua.ttf）・macOS のヒラギノ角ゴシックが必要。
 """
 import math
@@ -188,7 +188,10 @@ class Brand:
         return (
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
             f"<defs>{self.gradient_svg(0, 0, 100, 100)}</defs>"
-            f'<rect width="100" height="100" rx="{RADIUS}" fill="url(#g)"/>' + self.shapes_svg(shapes) + "</svg>\n"
+            f'<clipPath id="frame"><rect width="100" height="100" rx="{RADIUS}"/></clipPath>'
+            f'<rect width="100" height="100" rx="{RADIUS}" fill="url(#g)"/>'
+            # 枠からはみ出した図形は、角の丸い枠で切る（PNG と同じ見え方）
+            + '<g clip-path="url(#frame)">' + self.shapes_svg(shapes) + "</g></svg>\n"
         )
 
     # ---- PNG（4 倍で描いて縮め、ふちをなめらかにする） ----
