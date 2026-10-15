@@ -514,7 +514,7 @@
         window.document.addEventListener("visibilitychange", restore);
         try {
           if (window.Notification && window.Notification.permission === "granted") {
-            new window.Notification("オセロ", { body: text.replace("🎉 ", ""), icon: "assets/apple-touch-icon.png" });
+            new window.Notification("ひっくり", { body: text.replace("🎉 ", ""), icon: "assets/apple-touch-icon.png" });
           }
         } catch (error) {}
       }

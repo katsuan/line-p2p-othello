@@ -1,4 +1,11 @@
-# LIFF P2P オセロ
+# ⚫⚪ ひっくり 〜HiQRi〜
+
+LINE の友だちと、石をひっくり返して対戦する盤のゲーム。名前は「ひっくり」（石をひっくり返す）。英字は HiQRi（おくるん＝OQRN・キロっく＝kiloQ と同じ作り方で、「く」を Q にする。Q の後ろも「Ri」と大文字で、ロゴは Hi を黒・Ri を白の石の色に分ける）。「オセロ」は登録商標なので、画面・招待カードの名前は「ひっくり」にする。
+
+アイコン（`assets/icon.svg`・`icon-32.png`・`apple-touch-icon.png`・`icon-512.png`・`icon-maskable-512.png`）・横長のロゴ（`assets/logo.svg`）・共有したときの画像（`assets/ogp.png`）は `python3 tools/icon.py` で作る（図形を描く部分は `tools/brandkit.py`。pomodoro・countdown・gender-reveal と同じファイル）。盤の緑にうっすら盤の線。Q の輪は白と黒の2本の矢印が追いかけ合う「入れ替え」の矢印。Q のしっぽは、輪の中から外へ斜めに刺さって突き抜ける石（少しだけ上から見た円盤を細長く。上の面が白、厚みが黒）で、O に棒が刺さった Q の形。黒い矢印はこの石の下から出る。ホーム画面に追加したとき用に `manifest.webmanifest`。
+
+おくるんのトップの「ほかのツール」（line-share の `data/hub-links.json`）には「ひっくり 〜HiQRi〜」として、このアイコン付きで載せている。
+
 
 LIFF、Firebase Firestore、PeerJS を使った 2 人対戦オセロです。
 
@@ -172,3 +179,7 @@ GitHub Pages を GitHub Actions 配信にしている場合、`.github/workflows
   - コードにある `spectatorMode` は、切断した相手が戻ったときに再開方法を選ぶ間だけ盤面を見せるためのもので、観戦とは別
   - 案：ホストの端末が観戦者にも盤面・手番・回答中の問題（`quiz-open` / `quiz-choice`）を送る。観戦者の盤面は押せない。今の P2P は相手1人を前提にしているので、ホストが複数の接続を持てるようにする必要がある
   - Firestore のルームに観戦者の一覧（または人数）を持つか、観戦者はルームに書き込まずにホストへ直接つなぐかを決める
+
+## 紹介の窓口
+
+「📤 ひっくりを紹介する」（ページのいちばん下）は、おくるんの `shared/tool-share.js`（`data-tool="hiqri"`）。押すとおくるんで盤の緑の紹介カードを作って LINE に送れる（リンクのシェアも選べる）。中身は line-share の `data/hub-links.json` の `key: "hiqri"`。

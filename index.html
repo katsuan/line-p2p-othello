@@ -3,17 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>オセロ｜LINEの友だちと対戦</title>
-  <meta name="description" content="LINEの友だちと通信対戦できるオセロ。問題に正解すると石を置ける教養モード、COMとの練習、1台で2人の対戦も。">
+  <title>ひっくり｜LINEの友だちと対戦</title>
+  <meta name="description" content="ひっくり（HiQRi）。LINEの友だちと通信対戦できる、石をひっくり返す盤のゲーム。問題に正解すると石を置ける教養モード、COMとの練習、1台で2人の対戦も。">
   <meta name="theme-color" content="#14542e">
   <!-- アイコン（ブラウザのタブ・ホーム画面） -->
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+  <!-- アイコン・ロゴ・OGP は tools/icon.py で作る -->
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/icon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <!-- OGP（LINE・SNS でリンクを送ったときのカード）。画像は絶対 URL が必要 -->
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="オセロ">
-  <meta property="og:title" content="オセロ｜LINEの友だちと対戦">
+  <meta property="og:site_name" content="ひっくり（HiQRi）">
+  <meta property="og:title" content="ひっくり｜LINEの友だちと対戦">
+  <meta property="og:image:alt" content="ひっくり（HiQRi）：LINE の友だちと、石をひっくり返して対戦">
   <meta property="og:description" content="LINEの友だちと通信対戦。問題に正解すると石を置ける教養モード、COMとの練習、1台で2人の対戦も。">
   <meta property="og:url" content="https://katsuan.github.io/line-p2p-othello/">
   <meta property="og:image" content="https://katsuan.github.io/line-p2p-othello/assets/ogp.png">
@@ -32,7 +35,9 @@
     <section class="panel topbar">
       <div class="title-group">
         <div class="title-row">
-          <h1>オセロ</h1>
+          <!-- 名前（ひっくり）と横長のロゴ（HiQRi）。アイコン・ロゴは tools/icon.py で作る -->
+          <h1 class="brand-name"><img class="brand-icon" src="assets/icon.svg" alt="" width="32" height="32">ひっくり</h1>
+          <img class="brand-logo" src="assets/logo.svg" alt="HiQRi" width="78" height="28">
           <span id="versionBadge" class="version-badge" aria-label="コミットバージョン">----</span>
         </div>
       </div>
@@ -204,7 +209,7 @@
         </div>
 
         <div class="board-stage">
-          <div id="board" class="board" aria-label="オセロ盤"></div>
+          <div id="board" class="board" aria-label="盤"></div>
           <div id="quizOverlay" class="quiz-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="quizText">
             <div class="quiz-card">
               <!-- 相手が答えているときだけ出す（見るだけ。「隠す」で以後は出さない） -->
@@ -288,6 +293,8 @@
 
       </aside>
     </section>
+    <!-- 「📤 ひっくりを紹介する」：おくるんで紹介カードを送る窓口（line-share/shared/tool-share.js。中身は line-share/data/hub-links.json） -->
+    <div data-tool-share></div>
   </div>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -306,5 +313,6 @@
   <script src="js/play.js"></script>
   <script src="js/session.js"></script>
   <script src="js/main.js"></script>
+  <script src="https://katsuan.github.io/line-share/shared/tool-share.js" data-tool="hiqri" defer></script>
 </body>
 </html>

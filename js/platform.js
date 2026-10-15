@@ -206,7 +206,7 @@
   function buildFlexInviteMessage(roomId, shareUrl) {
     return {
       type: "flex",
-      altText: "オセロの招待が届いています。ルームID: " + roomId,
+      altText: "ひっくりの招待が届いています。ルームID: " + roomId,
       contents: {
         type: "bubble",
         size: "kilo",
@@ -217,7 +217,7 @@
           contents: [
             {
               type: "text",
-              text: "オセロで対戦しよう",
+              text: "ひっくりで対戦しよう",
               weight: "bold",
               size: "xl",
               color: "#183B2B"

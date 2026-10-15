@@ -110,6 +110,24 @@ h1 {
   margin: 0;
 }
 
+/* 名前（アイコン＋ひっくり）と横長のロゴ（HiQRi） */
+.brand-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-icon {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.brand-logo {
+  display: block;
+  width: auto;
+  height: 28px;
+}
+
 .subtitle {
   margin: 0;
   max-width: 32rem;
