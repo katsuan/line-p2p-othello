@@ -3,7 +3,7 @@
   --panel: #fffaf0;
   --text: #1d2a22;
   --muted: #576459;
-  --accent: #d66d2f;
+  --accent: #1f7a45; /* ロゴ・アイコンの盤の緑にそろえる（もとはオレンジ #d66d2f） */
   --shadow: 0 16px 40px rgba(23, 34, 27, 0.12);
 }
 
@@ -18,7 +18,7 @@ body {
   color: var(--text);
   font-family: "Avenir Next", "Helvetica Neue", sans-serif;
   background:
-    radial-gradient(circle at top left, rgba(214, 109, 47, 0.16), transparent 28%),
+    radial-gradient(circle at top left, rgba(31, 122, 69, 0.16), transparent 28%),
     radial-gradient(circle at bottom right, rgba(18, 107, 58, 0.16), transparent 24%),
     linear-gradient(180deg, #fbf7ef 0%, var(--bg) 100%);
 }
@@ -126,6 +126,7 @@ h1 {
   display: block;
   width: auto;
   height: 28px;
+  margin-left: auto; /* ほかのツールと同じく、ロゴは見出しの行の右に寄せる */
 }
 
 .subtitle {

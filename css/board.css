@@ -112,7 +112,7 @@
 .swap-color-button.is-black-start .swap-disc-black,
 .swap-color-button.is-white-start .swap-disc-white {
   transform: scale(1.25);
-  box-shadow: 0 0 0 3px rgba(214, 109, 47, 0.16);
+  box-shadow: 0 0 0 3px rgba(31, 122, 69, 0.16);
 }
 
 .swap-color-button.is-white-start .swap-arrow {
@@ -124,9 +124,9 @@
   gap: 10px;
   padding: 12px 14px;
   border-radius: 16px;
-  background: rgba(214, 109, 47, 0.12);
-  border: 1px solid rgba(214, 109, 47, 0.28);
-  color: #6f3916;
+  background: rgba(31, 122, 69, 0.12);
+  border: 1px solid rgba(31, 122, 69, 0.28);
+  color: #14542e;
   font-size: 0.9rem;
   line-height: 1.5;
 }
@@ -291,15 +291,15 @@
 }
 
 .player-card.active-turn {
-  border-color: #d66d2f;
+  border-color: #1f7a45;
   background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 12px 24px rgba(214, 109, 47, 0.18);
+  box-shadow: 0 12px 24px rgba(31, 122, 69, 0.18);
 }
 
 .player-card.color-black.active-turn,
 .player-card.color-white.active-turn {
-  border-color: #d66d2f;
-  box-shadow: 0 12px 24px rgba(214, 109, 47, 0.22);
+  border-color: #1f7a45;
+  box-shadow: 0 12px 24px rgba(31, 122, 69, 0.22);
 }
 
 .player-card.color-white.active-turn {
@@ -526,7 +526,7 @@
 }
 
 .result-overlay.result-win .result-card {
-  box-shadow: 0 22px 54px rgba(214, 109, 47, 0.26);
+  box-shadow: 0 22px 54px rgba(31, 122, 69, 0.26);
 }
 
 .result-overlay.result-lose .result-card {
@@ -542,7 +542,7 @@
 }
 
 .result-overlay.result-win .result-word {
-  color: #d66d2f;
+  color: #1f7a45;
   animation: result-win-pop 1.2s ease-in-out infinite;
 }
 
