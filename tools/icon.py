@@ -81,8 +81,7 @@ SHAPES = [
     # うっすら盤の線（アイコンだけ。ロゴには入れない）
     *[{"t": "line", "p": [(x, 6), (x, 94)], "w": 1.6, "alpha": 0.14, "deco": True} for x in (25, 50, 75)],
     *[{"t": "line", "p": [(6, y), (94, y)], "w": 1.6, "alpha": 0.14, "deco": True} for y in (25, 50, 75)],
-    {"t": "circle", "c": C, "r": R, "fill": "bg"},  # 輪の内側は盤の線を消す
-    {"t": "circle", "c": C, "r": R - RING_W / 2, "alpha": 0.12},  # 輪の内側をうっすら（O の形をはっきり）
+    # 輪の内側は塗らず、盤の線をそのまま見せる
     *swap_arrows(),
     *tail_stone(),
 ]
