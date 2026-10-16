@@ -104,7 +104,7 @@ def main():
     BRAND.write_icons(ASSETS, SHAPES)
     logo, ratio = BRAND.logo_svg("HiQRi", SHAPES, C, RING_OUTER, "HiQRi（ひっくり）", fills=LETTERS, plates=PLATES)
     (ASSETS / "logo.svg").write_text(logo, encoding="utf-8")
-    BRAND.write_ogp(ASSETS / "ogp.png", SHAPES, "ひっくり", "HiQRi", ["LINE の友だちと、石を", "ひっくり返して対戦"], decorate, en_fills=LETTERS, en_plates=PLATES)
+    BRAND.write_ogp(ASSETS / "ogp.png", SHAPES, "ひっくり", "HiQRi", ["LINE の友だちと、石を", "ひっくり返して対戦"], decorate, en_fills=LETTERS, en_plates=PLATES, copy="ひっくり返せ、その一手")
     print(f"アイコン・logo.svg（高さ 28px なら幅 {28 * ratio:.0f}px）・ogp.png を書き出しました")
 
 

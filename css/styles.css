@@ -476,3 +476,6 @@ button:disabled {
   font-weight: 600;
   opacity: 0.85;
 }
+
+/* キャッチコピー（見出しの行のすぐ下。おくるんの「つくって、おくるん」と同じ役目） */
+.brand-copy { margin: 4px 0 0; color: #1F7A45; font-size: 13px; font-weight: 800; line-height: 1.4; letter-spacing: 0.02em; }
