@@ -102,7 +102,8 @@
       }).then(function () {
         if (!liff.isLoggedIn()) {
           if (typeof liff.login === "function") {
-            liff.login();
+            // ログイン後は今のページ（?room= 付き）に戻す。指定しないと LIFF の入口に戻り、招待されたルームに入れない
+            liff.login({ redirectUri: loginReturnUrl() });
             return;
           }
           reject(new Error("LINE ログインを開始できませんでした。LIFF の設定を確認してください。"));
@@ -298,6 +299,15 @@
         }
       }
     };
+  }
+
+  // ログインの受け渡しで付く一時的なパラメータは外す（おくるんの shared/liff.js と同じ）
+  function loginReturnUrl() {
+    var url = new URL(window.location.href);
+    ["code", "state", "liffClientId", "liffRedirectUri", "error", "error_description", "friendship_status_changed"].forEach(function (key) {
+      url.searchParams.delete(key);
+    });
+    return url.toString();
   }
 
   function shareRoom(roomId, url) {
