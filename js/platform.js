@@ -245,39 +245,39 @@
               size: "sm",
               color: "#5B6E63"
             },
-            // ルームIDの枠：左に ID、右にピル形の「コピー」
+            // ルームIDの枠：上に「ルームID」、その下の行に ID と、ピル形の「コピー」を並べる
             {
               type: "box",
-              layout: "horizontal",
-              alignItems: "center",
-              spacing: "md",
+              layout: "vertical",
               paddingAll: "12px",
               backgroundColor: "#EAF5EE",
               cornerRadius: "14px",
               contents: [
+                { type: "text", text: "ルームID", size: "xs", color: "#4C6B57" },
                 {
                   type: "box",
-                  layout: "vertical",
-                  flex: 1,
+                  layout: "horizontal",
+                  alignItems: "center",
+                  spacing: "md",
+                  margin: "sm",
                   contents: [
-                    { type: "text", text: "ルームID", size: "xs", color: "#4C6B57" },
-                    { type: "text", text: roomId, margin: "sm", weight: "bold", size: "md", color: BRAND_DARK, wrap: true }
+                    { type: "text", text: roomId, flex: 1, weight: "bold", size: "md", color: BRAND_DARK, wrap: true },
+                    {
+                      type: "box",
+                      layout: "vertical",
+                      flex: 0,
+                      paddingTop: "6px",
+                      paddingBottom: "6px",
+                      paddingStart: "12px",
+                      paddingEnd: "12px",
+                      cornerRadius: "xxl",
+                      backgroundColor: "#FFFFFF",
+                      borderWidth: "1px",
+                      borderColor: "#B9D9C4",
+                      action: { type: "clipboard", label: "コピー", clipboardText: roomId },
+                      contents: [{ type: "text", text: "📋 コピー", size: "xs", weight: "bold", color: BRAND_GREEN }]
+                    }
                   ]
-                },
-                {
-                  type: "box",
-                  layout: "vertical",
-                  flex: 0,
-                  paddingTop: "6px",
-                  paddingBottom: "6px",
-                  paddingStart: "12px",
-                  paddingEnd: "12px",
-                  cornerRadius: "xxl",
-                  backgroundColor: "#FFFFFF",
-                  borderWidth: "1px",
-                  borderColor: "#B9D9C4",
-                  action: { type: "clipboard", label: "コピー", clipboardText: roomId },
-                  contents: [{ type: "text", text: "📋 コピー", size: "xs", weight: "bold", color: BRAND_GREEN }]
                 }
               ]
             }
