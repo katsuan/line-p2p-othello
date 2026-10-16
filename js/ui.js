@@ -1040,10 +1040,11 @@
         updateCountdown(prompt);
 
         var showStart = shouldShowStartOverlay(app);
-        // 準備の欄が出ているときは、その一番下の START を使う（盤面までスクロールしなくてよい）
+        // 準備の欄が出ているときは、その一番下にも START を出す（盤面までスクロールしなくてよい）。
+        // 盤面の上の START も同じように押せる（どちらも同じ表示・同じ動き）
         var startInSetup = showStart && !elements.hostSetupPanel.classList.contains("hidden");
         setHidden(elements.startOverlay, !showStart);
-        setHidden(elements.startButton, startInSetup);
+        setHidden(elements.startButton, !showStart);
         setHidden(elements.setupStartButton, !startInSetup);
         if (showStart) {
           var rulesReady = window.OthelloQuiz.isReady(app.rules);

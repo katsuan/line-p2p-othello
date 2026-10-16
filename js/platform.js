@@ -203,6 +203,11 @@
     }
   }
 
+  // 招待カード：ロゴ・アイコンと同じ盤の緑。上にロゴ入りの画像（assets/ogp.png）、ボタンも緑
+  var BRAND_GREEN = "#1F7A45";
+  var BRAND_DARK = "#14542E";
+  var SITE_URL = "https://katsuan.github.io/line-p2p-othello/";
+
   function buildFlexInviteMessage(roomId, shareUrl) {
     return {
       type: "flex",
@@ -210,18 +215,29 @@
       contents: {
         type: "bubble",
         size: "kilo",
+        header: {
+          type: "box",
+          layout: "vertical",
+          paddingAll: "14px",
+          background: { type: "linearGradient", angle: "135deg", startColor: BRAND_GREEN, endColor: BRAND_DARK },
+          contents: [
+            { type: "text", text: "ひっくりで対戦しよう", weight: "bold", size: "lg", color: "#FFFFFF" },
+            { type: "text", text: "〜HiQRi〜 LINE の友だちと石をひっくり返して対戦", size: "xxs", color: "#D8EEDF", margin: "xs", wrap: true }
+          ]
+        },
+        hero: {
+          type: "image",
+          url: SITE_URL + "assets/ogp.png",
+          size: "full",
+          aspectRatio: "40:21",
+          aspectMode: "cover",
+          action: { type: "uri", uri: shareUrl }
+        },
         body: {
           type: "box",
           layout: "vertical",
           spacing: "md",
           contents: [
-            {
-              type: "text",
-              text: "ひっくりで対戦しよう",
-              weight: "bold",
-              size: "xl",
-              color: "#183B2B"
-            },
             {
               type: "text",
               text: "このメッセージからルームに参加できます。",
@@ -232,26 +248,12 @@
             {
               type: "box",
               layout: "vertical",
-              margin: "md",
-              paddingAll: "14px",
-              backgroundColor: "#F5F1E8",
-              cornerRadius: "16px",
+              paddingAll: "12px",
+              backgroundColor: "#EAF5EE",
+              cornerRadius: "14px",
               contents: [
-                {
-                  type: "text",
-                  text: "ルームID",
-                  size: "xs",
-                  color: "#7A877F"
-                },
-                {
-                  type: "text",
-                  text: roomId,
-                  margin: "sm",
-                  weight: "bold",
-                  size: "lg",
-                  color: "#183B2B",
-                  wrap: true
-                }
+                { type: "text", text: "ルームID", size: "xs", color: "#4C6B57" },
+                { type: "text", text: roomId, margin: "sm", weight: "bold", size: "lg", color: BRAND_DARK, wrap: true }
               ]
             }
           ]
@@ -265,22 +267,14 @@
               type: "button",
               style: "primary",
               height: "sm",
-              color: "#E3722C",
-              action: {
-                type: "uri",
-                label: "このルームに参加",
-                uri: shareUrl
-              }
+              color: BRAND_GREEN,
+              action: { type: "uri", label: "このルームに参加", uri: shareUrl }
             },
             {
               type: "button",
               style: "secondary",
               height: "sm",
-              action: {
-                type: "clipboard",
-                label: "ルームIDをコピー",
-                clipboardText: roomId
-              }
+              action: { type: "clipboard", label: "ルームIDをコピー", clipboardText: roomId }
             }
           ]
         }
