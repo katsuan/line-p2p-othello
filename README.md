@@ -2,7 +2,7 @@
 
 LINE の友だちと、石をひっくり返して対戦する盤のゲーム。名前は「ひっくり」（石をひっくり返す）。英字は HiQRi（おくるん＝OQRN・キロっく＝kiloQ と同じ作り方で、「く」を Q にする。Q の後ろも「Ri」と大文字で、ロゴは Hi を黒・Ri を白の石の色に分ける）。「オセロ」は登録商標なので、画面・招待カードの名前は「ひっくり」にする。
 
-アイコン（`assets/icon.svg`・`icon-32.png`・`apple-touch-icon.png`・`icon-512.png`・`icon-maskable-512.png`）・横長のロゴ（`assets/logo.svg`）・共有したときの画像（`assets/ogp.png`）は `python3 tools/icon.py` で作る（図形を描く部分は、となりの line-share の `tools/brandkit.py`（`~/GitHub/line-share` を同じフォルダに置いて使う））。盤の緑にうっすら盤の線。Q の輪は白と黒の2本の矢印が追いかけ合う「入れ替え」の矢印。Q のしっぽは、輪の中から外へ斜めに刺さって突き抜ける石（少しだけ上から見た円盤を細長く。上の面が白、厚みが黒）で、O に棒が刺さった Q の形。黒い矢印はこの石の下から出る。ホーム画面に追加したとき用に `manifest.webmanifest`。
+アイコン（`assets/icon.svg`・`icon-32.png`・`apple-touch-icon.png`・`icon-512.png`・`icon-maskable-512.png`）・横長のロゴ（`assets/logo.svg`）・共有したときの画像（`assets/ogp.png`）は `python3 tools/icon.py` で作る（図形を描く部分は、となりのおくるん（`~/GitHub/q-oqrn`。GitHub のリポジトリ名は line-share）の `tools/brandkit.py`）。盤の緑にうっすら盤の線。Q の輪は白と黒の2本の矢印が追いかけ合う「入れ替え」の矢印。Q のしっぽは、輪の中から外へ斜めに刺さって突き抜ける石（少しだけ上から見た円盤を細長く。上の面が白、厚みが黒）で、O に棒が刺さった Q の形。黒い矢印はこの石の下から出る。ホーム画面に追加したとき用に `manifest.webmanifest`。
 
 おくるんのトップの「ほかのツール」（line-share の `data/hub-links.json`）には「ひっくり 〜HiQRi〜」として、このアイコン付きで載せている。
 
