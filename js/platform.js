@@ -245,15 +245,40 @@
               size: "sm",
               color: "#5B6E63"
             },
+            // ルームIDの枠：左に ID、右にピル形の「コピー」
             {
               type: "box",
-              layout: "vertical",
+              layout: "horizontal",
+              alignItems: "center",
+              spacing: "md",
               paddingAll: "12px",
               backgroundColor: "#EAF5EE",
               cornerRadius: "14px",
               contents: [
-                { type: "text", text: "ルームID", size: "xs", color: "#4C6B57" },
-                { type: "text", text: roomId, margin: "sm", weight: "bold", size: "lg", color: BRAND_DARK, wrap: true }
+                {
+                  type: "box",
+                  layout: "vertical",
+                  flex: 1,
+                  contents: [
+                    { type: "text", text: "ルームID", size: "xs", color: "#4C6B57" },
+                    { type: "text", text: roomId, margin: "sm", weight: "bold", size: "md", color: BRAND_DARK, wrap: true }
+                  ]
+                },
+                {
+                  type: "box",
+                  layout: "vertical",
+                  flex: 0,
+                  paddingTop: "6px",
+                  paddingBottom: "6px",
+                  paddingStart: "12px",
+                  paddingEnd: "12px",
+                  cornerRadius: "xxl",
+                  backgroundColor: "#FFFFFF",
+                  borderWidth: "1px",
+                  borderColor: "#B9D9C4",
+                  action: { type: "clipboard", label: "コピー", clipboardText: roomId },
+                  contents: [{ type: "text", text: "📋 コピー", size: "xs", weight: "bold", color: BRAND_GREEN }]
+                }
               ]
             }
           ]
@@ -269,12 +294,6 @@
               height: "sm",
               color: BRAND_GREEN,
               action: { type: "uri", label: "このルームに参加", uri: shareUrl }
-            },
-            {
-              type: "button",
-              style: "secondary",
-              height: "sm",
-              action: { type: "clipboard", label: "ルームIDをコピー", clipboardText: roomId }
             }
           ]
         }
