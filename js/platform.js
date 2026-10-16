@@ -245,7 +245,7 @@
               size: "sm",
               color: "#5B6E63"
             },
-            // ルームIDの枠：上に「ルームID」、その下の行に ID と、ピル形の「コピー」を並べる
+            // ルームIDの枠：上の行に「ルームID」とピル形の「コピー」、その下の行に ID
             {
               type: "box",
               layout: "vertical",
@@ -253,21 +253,19 @@
               backgroundColor: "#EAF5EE",
               cornerRadius: "14px",
               contents: [
-                { type: "text", text: "ルームID", size: "xs", color: "#4C6B57" },
                 {
                   type: "box",
                   layout: "horizontal",
                   alignItems: "center",
                   spacing: "md",
-                  margin: "sm",
                   contents: [
-                    { type: "text", text: roomId, flex: 1, weight: "bold", size: "md", color: BRAND_DARK, wrap: true },
+                    { type: "text", text: "ルームID", flex: 1, size: "xs", color: "#4C6B57" },
                     {
                       type: "box",
                       layout: "vertical",
                       flex: 0,
-                      paddingTop: "6px",
-                      paddingBottom: "6px",
+                      paddingTop: "4px",
+                      paddingBottom: "4px",
                       paddingStart: "12px",
                       paddingEnd: "12px",
                       cornerRadius: "xxl",
@@ -278,7 +276,8 @@
                       contents: [{ type: "text", text: "📋 コピー", size: "xs", weight: "bold", color: BRAND_GREEN }]
                     }
                   ]
-                }
+                },
+                { type: "text", text: roomId, margin: "sm", weight: "bold", size: "lg", color: BRAND_DARK, wrap: true }
               ]
             }
           ]
