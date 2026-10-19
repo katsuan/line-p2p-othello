@@ -19,13 +19,13 @@
   <meta property="og:image:alt" content="ひっくり（HiQRi）：LINE の友だちと、石をひっくり返して対戦">
   <meta property="og:description" content="LINEの友だちと通信対戦。問題に正解すると石を置ける教養モード、COMとの練習、1台で2人の対戦も。">
   <meta property="og:url" content="https://katsuan.github.io/line-p2p-othello/">
-  <meta property="og:image" content="https://katsuan.github.io/line-p2p-othello/assets/ogp.png">
+  <meta property="og:image" content="https://katsuan.github.io/line-p2p-othello/assets/ogp.png?v=20261019">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:locale" content="ja_JP">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/board.css">
+  <link rel="stylesheet" href="css/styles.css?v=202610191251">
+  <link rel="stylesheet" href="css/board.css?v=202610191251">
 </head>
 <body class="boot-loading">
   <p class="boot-note" aria-live="polite">準備しています…</p>
@@ -251,6 +251,8 @@
                 <button id="resultPrimaryButton" class="button-primary" type="button">はい</button>
                 <button id="resultSecondaryButton" class="button-ghost" type="button">いいえ</button>
               </div>
+              <!-- 対局の結果を、招待カードと同じ緑のカードで LINE に送る（js/platform.js の shareResult） -->
+              <button id="resultShareButton" class="button-ghost result-share-button" type="button">🏆 結果をカードで送る</button>
             </div>
           </div>
         </div>
@@ -302,18 +304,18 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-  <script src="js/version.js"></script>
-  <script src="js/firebase.js"></script>
-  <script src="js/webrtc.js"></script>
-  <script src="js/game.js"></script>
-  <script src="js/quiz.js"></script>
-  <script src="js/tex.js"></script>
-  <script src="js/platform.js"></script>
-  <script src="js/matchmaking.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/play.js"></script>
-  <script src="js/session.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/version.js?v=202610191251"></script>
+  <script src="js/firebase.js?v=202610191251"></script>
+  <script src="js/webrtc.js?v=202610191251"></script>
+  <script src="js/game.js?v=202610191251"></script>
+  <script src="js/quiz.js?v=202610191251"></script>
+  <script src="js/tex.js?v=202610191251"></script>
+  <script src="js/platform.js?v=202610191251"></script>
+  <script src="js/matchmaking.js?v=202610191251"></script>
+  <script src="js/ui.js?v=202610191251"></script>
+  <script src="js/play.js?v=202610191251"></script>
+  <script src="js/session.js?v=202610191251"></script>
+  <script src="js/main.js?v=202610191251"></script>
   <script src="https://katsuan.github.io/line-share/shared/tool-share.js" data-tool="hiqri" defer></script>
 </body>
 </html>

@@ -558,6 +558,7 @@
       resultScoreline: documentRef.getElementById("resultScoreline"),
       resultPrimaryButton: documentRef.getElementById("resultPrimaryButton"),
       resultSecondaryButton: documentRef.getElementById("resultSecondaryButton"),
+      resultShareButton: documentRef.getElementById("resultShareButton"),
       ruleSetup: documentRef.getElementById("ruleSetup"),
       ruleNormalButton: documentRef.getElementById("ruleNormalButton"),
       ruleQuizButton: documentRef.getElementById("ruleQuizButton"),
@@ -731,6 +732,7 @@
         elements.hostColorSwapButton.addEventListener("click", handlers.onSwapColors);
         elements.resultPrimaryButton.addEventListener("click", handlers.onResultPrimary);
         elements.resultSecondaryButton.addEventListener("click", handlers.onResultSecondary);
+        elements.resultShareButton.addEventListener("click", handlers.onShareResult);
         elements.roomInput.addEventListener("keydown", function (event) {
           if (event.key === "Enter") {
             handlers.onJoinRoom();

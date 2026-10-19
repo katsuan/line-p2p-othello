@@ -890,6 +890,23 @@
               play.requestRematch();
             }
           },
+          onShareResult: function () {
+            if (!app.game.winner) {
+              return;
+            }
+            var counts = Game.countDiscs(app.game.board);
+            var mine = app.myColor === Game.WHITE ? counts.white : counts.black;
+            var theirs = app.myColor === Game.WHITE ? counts.black : counts.white;
+            Platform.shareResult({
+              outcome: app.myColor ? Game.outcomeForColor(app.game.winner, app.myColor) : "draw",
+              myName: app.displayName || "わたし",
+              opponentName: app.opponentDisplayName || (app.opponentMode === "com" ? "COM" : "相手"),
+              mine: mine,
+              theirs: theirs
+            }).then(function (result) {
+              setMessage(result.message);
+            });
+          },
           onResultSecondary: function () {
             if (app.rematch.incoming) {
               play.rejectRematch();

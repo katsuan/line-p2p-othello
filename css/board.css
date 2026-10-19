@@ -1180,3 +1180,10 @@
 #resumeActions.is-restart-first #resumeRestartButton {
   order: -1;
 }
+
+/* 対局の結果をカードで送る（結果の画面のいちばん下） */
+.result-share-button {
+  display: block;
+  margin: 10px auto 0;
+}
+

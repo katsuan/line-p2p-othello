@@ -102,6 +102,11 @@
       }).then(function () {
         if (!liff.isLoggedIn()) {
           if (typeof liff.login === "function") {
+            // LINE の外（ブラウザ）では、黙ってログイン画面へ飛ばさず、ログインするか LINE アプリで開くかを選んでもらう
+            if (typeof liff.isInClient === "function" && !liff.isInClient()) {
+              showOutsideChoice();
+              return;
+            }
             // ログイン後は今のページ（?room= 付き）に戻す。指定しないと LIFF の入口に戻り、招待されたルームに入れない
             liff.login({ redirectUri: loginReturnUrl() });
             return;
@@ -228,7 +233,7 @@
         },
         hero: {
           type: "image",
-          url: SITE_URL + "assets/ogp.png",
+          url: SITE_URL + "assets/ogp.png?v=20261019",
           size: "full",
           aspectRatio: "40:21",
           aspectMode: "cover",
@@ -301,6 +306,28 @@
     };
   }
 
+  // LINE の外で開いたとき：「LINE でログインして遊ぶ」か「LINE アプリで開く」を選ぶ画面（キロっく・おくるんと同じ考え方）。
+  // LINE アプリで開くときは、招待されたルーム（?room=）もそのまま持っていく
+  function showOutsideChoice() {
+    var appUrl = "https://liff.line.me/" + window.APP_CONFIG.liffId + window.location.search;
+    var box = document.createElement("div");
+    box.className = "outside-choice";
+    box.setAttribute("role", "dialog");
+    box.setAttribute("aria-modal", "true");
+    box.innerHTML =
+      '<div class="outside-choice-card">' +
+      '<img src="' + getAssetUrl("assets/icon.svg") + '" alt="" width="56" height="56">' +
+      '<p class="outside-choice-title">LINE の外で開いています</p>' +
+      '<p class="outside-choice-text">ひっくりは LINE の友だちと対戦します。どちらかから始めてください。</p>' +
+      '<a class="outside-choice-button is-app" href="' + appUrl + '">💬 LINE アプリで開く</a>' +
+      '<button class="outside-choice-button" type="button">🔑 このブラウザで LINE にログイン</button>' +
+      "</div>";
+    box.querySelector("button").addEventListener("click", function () {
+      liff.login({ redirectUri: loginReturnUrl() });
+    });
+    document.body.appendChild(box);
+  }
+
   // ログインの受け渡しで付く一時的なパラメータは外す（おくるんの shared/liff.js と同じ）
   function loginReturnUrl() {
     var url = new URL(window.location.href);
@@ -308,6 +335,79 @@
       url.searchParams.delete(key);
     });
     return url.toString();
+  }
+
+  // 対局の結果のカード（招待カードと同じ緑）。ボタンは「ひっくりで対戦する」（LIFF の入口）
+  function buildFlexResultMessage(info) {
+    var title = info.outcome === "win" ? "🏆 勝ちました！" : info.outcome === "lose" ? "負けました…" : "引き分け";
+    var appUrl = window.APP_CONFIG && window.APP_CONFIG.liffId ? "https://liff.line.me/" + window.APP_CONFIG.liffId : SITE_URL;
+    var row = function (name, count, bold) {
+      return {
+        type: "box",
+        layout: "horizontal",
+        contents: [
+          { type: "text", text: name, size: "sm", color: "#1D2A22", flex: 4, wrap: true, weight: bold ? "bold" : "regular" },
+          { type: "text", text: count + " 個", size: "sm", color: "#1D2A22", align: "end", flex: 2, weight: bold ? "bold" : "regular" }
+        ]
+      };
+    };
+    return {
+      type: "flex",
+      altText: "ひっくりの結果：" + info.myName + " " + info.mine + " - " + info.theirs + " " + info.opponentName,
+      contents: {
+        type: "bubble",
+        size: "kilo",
+        header: {
+          type: "box",
+          layout: "vertical",
+          paddingAll: "14px",
+          background: { type: "linearGradient", angle: "135deg", startColor: BRAND_GREEN, endColor: BRAND_DARK },
+          contents: [
+            { type: "text", text: title, weight: "bold", size: "lg", color: "#FFFFFF" },
+            { type: "text", text: "〜HiQRi〜 ひっくり返せ、その一手", size: "xxs", color: "#D8EEDF", margin: "xs" }
+          ]
+        },
+        body: {
+          type: "box",
+          layout: "vertical",
+          spacing: "sm",
+          paddingAll: "14px",
+          contents: [
+            { type: "text", text: info.mine + " - " + info.theirs, size: "3xl", weight: "bold", align: "center", color: BRAND_DARK },
+            { type: "separator", margin: "md" },
+            row(info.myName, info.mine, info.outcome === "win"),
+            row(info.opponentName, info.theirs, info.outcome === "lose")
+          ]
+        },
+        footer: {
+          type: "box",
+          layout: "vertical",
+          paddingAll: "12px",
+          contents: [
+            { type: "button", style: "primary", color: BRAND_GREEN, height: "sm", action: { type: "uri", label: "ひっくりで対戦する", uri: appUrl } }
+          ]
+        }
+      }
+    };
+  }
+
+  function shareResult(info) {
+    var text = "ひっくりの結果：" + info.myName + " " + info.mine + " - " + info.theirs + " " + info.opponentName;
+    if (window.liff &&
+        typeof liff.isApiAvailable === "function" &&
+        liff.isApiAvailable("shareTargetPicker") &&
+        typeof liff.shareTargetPicker === "function") {
+      return liff.shareTargetPicker([buildFlexResultMessage(info)]).then(function (result) {
+        return { status: result ? "shared" : "cancelled", message: result ? "結果を送りました。" : "送るのをやめました。" };
+      }).catch(function () {
+        return copyText(text).then(function () {
+          return { status: "copied", message: "送れなかったので、結果をコピーしました。" };
+        });
+      });
+    }
+    return copyText(text).then(function () {
+      return { status: "copied", message: "LINE で送れない環境なので、結果をコピーしました。" };
+    });
   }
 
   function shareRoom(roomId, url) {
@@ -381,6 +481,8 @@
     loadVersionInfo: loadVersionInfo,
     copyText: copyText,
     shareRoom: shareRoom,
+    shareResult: shareResult,
+    buildFlexResultMessage: buildFlexResultMessage,
     reload: reload
   };
 }(window, document));

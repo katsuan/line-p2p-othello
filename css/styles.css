@@ -479,3 +479,62 @@ button:disabled {
 
 /* キャッチコピー（見出しの行のすぐ下。おくるんの「つくって、おくるん」と同じ役目） */
 .brand-copy { margin: 4px 0 0; color: #1F7A45; font-size: 13px; font-weight: 800; line-height: 1.4; letter-spacing: 0.02em; }
+
+/* LINE の外で開いたときの、ログインするか LINE アプリで開くかを選ぶ画面（js/platform.js の showOutsideChoice） */
+.outside-choice {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(20, 30, 24, 0.55);
+}
+
+.outside-choice-card {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: min(100%, 360px);
+  padding: 24px 20px 20px;
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.outside-choice-title {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.outside-choice-text {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.outside-choice-button {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid rgba(29, 42, 34, 0.18);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.outside-choice-button.is-app {
+  border-color: transparent;
+  background: #06c755;
+  color: #fff;
+}
+
