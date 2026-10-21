@@ -11,6 +11,8 @@
   box-sizing: border-box;
 }
 
+/* iPhone・LINE の中のブラウザで、キーボードが出て画面がずれたとき、ページの外（黒）が見えないよう、ページそのものにも背景の色 */
+html { background-color: var(--bg); }
 body {
   margin: 0;
   min-height: 100vh;
@@ -65,12 +67,11 @@ body.boot-loading .board-layout,
 }
 
 .panel {
-  background: rgba(255, 250, 240, 0.92);
+  background: rgba(255, 250, 240, 0.97);
   border: 1px solid rgba(29, 42, 34, 0.08);
   border-radius: 22px;
   box-shadow: var(--shadow);
-  backdrop-filter: blur(8px);
-}
+  }
 
 .topbar {
   display: grid;
@@ -297,7 +298,7 @@ h1 {
   padding: 11px 14px;
   background: #ffffff;
   color: var(--text);
-  font-size: 0.95rem;
+  font-size: 16px; /* 16px より小さいと、iPhone が押したときに拡大して画面がずれる */
 }
 
 button {
