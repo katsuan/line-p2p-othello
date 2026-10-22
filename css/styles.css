@@ -316,3 +316,48 @@ body.is-lobby .board-shell {
     width: 100%;
   }
 }
+
+/* ---- 暗い表示（index.html の data-ls-dark="auto"。Q キットの色は ui.css が暗くする） ----
+ * 盤・石・白番の札（白い石の色）は明るいまま。
+ */
+@media (prefers-color-scheme: dark) {
+  :root[data-ls-dark="auto"] body {
+    background:
+      radial-gradient(circle at top left, rgba(31, 122, 69, 0.22), transparent 28%),
+      radial-gradient(circle at bottom right, rgba(18, 107, 58, 0.18), transparent 24%),
+      var(--ls-bg);
+  }
+
+  :root[data-ls-dark="auto"] .ls-input:focus {
+    box-shadow: 0 0 0 3px rgba(80, 200, 130, 0.3);
+  }
+
+  :root[data-ls-dark="auto"] .message-box,
+  :root[data-ls-dark="auto"] .quiz-choice {
+    background: var(--ls-surface);
+    color: var(--ls-text);
+  }
+
+  :root[data-ls-dark="auto"] .swap-color-button,
+  :root[data-ls-dark="auto"] .quiz-choice:active:not(:disabled) {
+    background: var(--ls-surface-sub);
+  }
+
+  /* 白番の札は白い石の色のまま。字は暗く */
+  :root[data-ls-dark="auto"] .player-card.color-white {
+    color: #1d2a22;
+    --ls-text: #1d2a22;
+    --ls-subtext: #576459;
+  }
+
+  :root[data-ls-dark="auto"] .quiz-choice.is-correct,
+  :root[data-ls-dark="auto"] .quiz-input-field.is-correct {
+    background: #17301f;
+  }
+
+  :root[data-ls-dark="auto"] .quiz-choice.is-wrong,
+  :root[data-ls-dark="auto"] .quiz-input-field.is-wrong,
+  :root[data-ls-dark="auto"] .quiz-countdown.is-hurry {
+    background: #3a1d1f;
+  }
+}

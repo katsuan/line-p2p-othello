@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-ls-dark="auto">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ひっくり｜LINEの友だちと対戦</title>
   <meta name="description" content="ひっくり（HiQRi）。LINEの友だちと通信対戦できる、石をひっくり返す盤のゲーム。問題に正解すると石を置ける教養モード、COMとの練習、1台で2人の対戦も。">
-  <meta name="theme-color" content="#14542e">
+  <meta name="theme-color" content="#14542e" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#16151a" media="(prefers-color-scheme: dark)">
   <!-- アイコン（ブラウザのタブ・ホーム画面） -->
   <!-- アイコン・ロゴ・OGP は tools/icon.py で作る -->
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
@@ -26,8 +27,8 @@
   <meta name="twitter:card" content="summary_large_image">
   <!-- Q キット（おくるんの共通部品）。色と字は css/styles.css の :root で、ひっくりの緑に -->
   <link rel="stylesheet" href="https://katsuan.github.io/line-share/shared/ui.css">
-  <link rel="stylesheet" href="css/styles.css?v=202610221103">
-  <link rel="stylesheet" href="css/board.css?v=202610221103">
+  <link rel="stylesheet" href="css/styles.css?v=202610221446">
+  <link rel="stylesheet" href="css/board.css?v=202610221446">
 </head>
 <body class="boot-loading">
   <p class="boot-note" aria-live="polite">準備しています…</p>
@@ -61,7 +62,7 @@
             </button>
             <button id="newLocalRoomButton" class="ls-button start-choice" type="button">
               <span class="start-choice-title">📱 1台で2人</span>
-              <span class="start-choice-sub">この端末を交代で使う</span>
+              <span class="start-choice-sub">1台を交代で</span>
             </button>
           </div>
           <!-- 招待中は「LINEで招待」をいちばん上に。ルームIDは LINE 以外で伝えたいとき用 -->
@@ -306,19 +307,21 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-  <script src="js/version.js?v=202610221103"></script>
-  <script src="js/firebase.js?v=202610221103"></script>
-  <script src="js/webrtc.js?v=202610221103"></script>
-  <script src="js/game.js?v=202610221103"></script>
-  <script src="js/quiz.js?v=202610221103"></script>
-  <script src="js/tex.js?v=202610221103"></script>
-  <script src="js/platform.js?v=202610221103"></script>
-  <script src="js/matchmaking.js?v=202610221103"></script>
-  <script src="js/ui.js?v=202610221103"></script>
-  <script src="js/play.js?v=202610221103"></script>
-  <script src="js/session.js?v=202610221103"></script>
-  <script src="js/main.js?v=202610221103"></script>
+  <script src="js/version.js?v=202610221446"></script>
+  <script src="js/firebase.js?v=202610221446"></script>
+  <script src="js/webrtc.js?v=202610221446"></script>
+  <script src="js/game.js?v=202610221446"></script>
+  <script src="js/quiz.js?v=202610221446"></script>
+  <script src="js/tex.js?v=202610221446"></script>
+  <script src="js/platform.js?v=202610221446"></script>
+  <script src="js/matchmaking.js?v=202610221446"></script>
+  <script src="js/ui.js?v=202610221446"></script>
+  <script src="js/play.js?v=202610221446"></script>
+  <script src="js/session.js?v=202610221446"></script>
+  <script src="js/main.js?v=202610221446"></script>
   <script src="https://katsuan.github.io/line-share/shared/ui.js" defer></script>
   <script src="https://katsuan.github.io/line-share/shared/tool-share.js" data-tool="hiqri" defer></script>
+<!-- 電波がなくても開けるように（sw.js） -->
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});</script>
 </body>
 </html>

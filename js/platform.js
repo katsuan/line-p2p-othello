@@ -319,8 +319,8 @@
       '<img src="' + getAssetUrl("assets/icon.svg") + '" alt="" width="56" height="56">' +
       '<p class="ls-sheet-title">LINE の外で開いています</p>' +
       '<p class="ls-hint outside-choice-text">ひっくりは LINE の友だちと対戦します。どちらかから始めてください。</p>' +
-      '<a class="ls-outside-button is-app outside-choice-button" href="' + appUrl + '">💬 LINE アプリで開く</a>' +
-      '<button class="ls-outside-button outside-choice-button" type="button">🔑 このブラウザで LINE にログイン</button>' +
+      '<a class="ls-outside-button is-app outside-choice-button" href="' + appUrl + '">💬 LINEで開く</a>' +
+      '<button class="ls-outside-button outside-choice-button" type="button">🔑 ブラウザでログイン</button>' +
       "</div>";
     box.querySelector("button").addEventListener("click", function () {
       liff.login({ redirectUri: loginReturnUrl() });
