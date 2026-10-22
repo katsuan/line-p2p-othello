@@ -104,14 +104,16 @@
           if (typeof liff.login === "function") {
             // LINE の外（ブラウザ）では、黙ってログイン画面へ飛ばさず、ログインするか LINE アプリで開くかを選んでもらう
             if (typeof liff.isInClient === "function" && !liff.isInClient()) {
-              showOutsideChoice();
+              showOutsideChoice(function () {
+                resolve({ userId: getStableDebugUserId(), displayName: "ゲスト", pictureUrl: "", guest: true });
+              });
               return;
             }
             // ログイン後は今のページ（?room= 付き）に戻す。指定しないと LIFF の入口に戻り、招待されたルームに入れない
             liff.login({ redirectUri: loginReturnUrl() });
             return;
           }
-          reject(new Error("LINE ログインを開始できませんでした。LIFF の設定を確認してください。"));
+          reject(new Error("LINE にログインできませんでした。"));
           return;
         }
 
@@ -306,24 +308,30 @@
     };
   }
 
-  // LINE の外で開いたとき：「LINE でログインして遊ぶ」か「LINE アプリで開く」を選ぶ画面（キロっく・おくるんと同じ考え方）。
+  // LINE の外で開いたとき：「LINE アプリで開く」「ログインして遊ぶ」か、ログインせずに COM・1台で2人で遊ぶかを選ぶ（キロっく・おくるんと同じ考え方）。
   // LINE アプリで開くときは、招待されたルーム（?room=）もそのまま持っていく
-  function showOutsideChoice() {
+  function showOutsideChoice(playAsGuest) {
     var appUrl = "https://liff.line.me/" + window.APP_CONFIG.liffId + window.location.search;
     var box = document.createElement("div");
     box.className = "ls-sheet outside-choice";
     box.setAttribute("role", "dialog");
     box.setAttribute("aria-modal", "true");
+    box.setAttribute("aria-labelledby", "outsideChoiceTitle");
     box.innerHTML =
       '<div class="ls-sheet-card outside-choice-card">' +
       '<img src="' + getAssetUrl("assets/icon.svg") + '" alt="" width="56" height="56">' +
-      '<p class="ls-sheet-title">LINE の外で開いています</p>' +
-      '<p class="ls-hint outside-choice-text">ひっくりは LINE の友だちと対戦します。どちらかから始めてください。</p>' +
-      '<a class="ls-outside-button is-app outside-choice-button" href="' + appUrl + '">💬 LINEで開く</a>' +
-      '<button class="ls-outside-button outside-choice-button" type="button">🔑 ブラウザでログイン</button>' +
+      '<p id="outsideChoiceTitle" class="ls-sheet-title">LINE の外で開いています</p>' +
+      '<p class="ls-hint outside-choice-text">友だちとの対戦は、LINE で開くかログインすると遊べます。COM との練習は、このまま遊べます。</p>' +
+      '<a class="ls-outside-button is-app outside-choice-button" href="' + appUrl + '">💬 LINE アプリで開く</a>' +
+      '<button class="ls-outside-button outside-choice-button" type="button" data-act="login">🔑 ログインして遊ぶ</button>' +
+      '<button class="ls-sheet-cancel" type="button" data-act="guest">🤖 ログインせずに練習する</button>' +
       "</div>";
-    box.querySelector("button").addEventListener("click", function () {
+    box.querySelector('[data-act="login"]').addEventListener("click", function () {
       liff.login({ redirectUri: loginReturnUrl() });
+    });
+    box.querySelector('[data-act="guest"]').addEventListener("click", function () {
+      box.remove();
+      playAsGuest();
     });
     document.body.appendChild(box);
   }
@@ -391,54 +399,70 @@
     };
   }
 
-  function shareResult(info) {
-    var text = "ひっくりの結果：" + info.myName + " " + info.mine + " - " + info.theirs + " " + info.opponentName;
-    if (window.liff &&
+  // LINE の送り先を選ぶ画面が使えるか（LIFF の準備前は isApiAvailable が例外を出すので、使えないあつかい）
+  function canPickTarget() {
+    try {
+      return !!(window.liff &&
         typeof liff.isApiAvailable === "function" &&
         liff.isApiAvailable("shareTargetPicker") &&
-        typeof liff.shareTargetPicker === "function") {
+        typeof liff.shareTargetPicker === "function");
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // コピーできないときは、選べる文字をシートで出す（ブラウザの小窓は使わない）
+  function showCopyBox(title, text) {
+    if (window.LineShareUI && typeof window.LineShareUI.ask === "function") {
+      window.LineShareUI.ask({ title: title, input: text, readonly: true, ok: "閉じる", cancel: null });
+    }
+  }
+
+  // LINE で送れないときはコピー。コピーもできないときは選べる文字で出す
+  function copyInstead(text, copiedMessage, boxTitle) {
+    return copyText(text).then(function (copied) {
+      if (copied) {
+        return { status: "copied", message: copiedMessage };
+      }
+      showCopyBox(boxTitle, text);
+      return { status: "manual", message: "" };
+    });
+  }
+
+  function shareResult(info) {
+    var text = "ひっくりの結果：" + info.myName + " " + info.mine + " - " + info.theirs + " " + info.opponentName;
+    if (canPickTarget()) {
       return liff.shareTargetPicker([buildFlexResultMessage(info)]).then(function (result) {
         return { status: result ? "shared" : "cancelled", message: result ? "結果を送りました。" : "送るのをやめました。" };
-      }).catch(function () {
-        return copyText(text).then(function () {
-          return { status: "copied", message: "送れなかったので、結果をコピーしました。" };
-        });
+      }).catch(function (error) {
+        if (window.console) {
+          window.console.warn("[ひっくり] 結果を送れませんでした", error);
+        }
+        return copyInstead(text, "LINE で送れなかったので、結果をコピーしました。", "結果を長押ししてコピーしてね");
       });
     }
-    return copyText(text).then(function () {
-      return { status: "copied", message: "LINE で送れない環境なので、結果をコピーしました。" };
-    });
+    return copyInstead(text, "LINE の外なので、結果をコピーしました。トークに貼って送れます。", "結果を長押ししてコピーしてね");
   }
 
   function shareRoom(roomId, url) {
     return buildShareUrl(roomId, url).then(function (shareUrl) {
-      if (window.liff &&
-          typeof liff.isApiAvailable === "function" &&
-          liff.isApiAvailable("shareTargetPicker") &&
-          typeof liff.shareTargetPicker === "function") {
+      if (canPickTarget()) {
         return liff.shareTargetPicker([
           buildFlexInviteMessage(roomId, shareUrl)
         ]).then(function (result) {
           if (result) {
-            return { status: "shared", message: "LINE で招待メッセージを送信しました。" };
+            return { status: "shared", message: "招待を送りました。友だちの参加を待っています。" };
           }
-          return { status: "cancelled", message: "招待がキャンセルされました。" };
-        }).catch(function () {
-          return copyText(shareUrl).then(function () {
-            return {
-              status: "copied",
-              message: "LINE 共有に失敗したため、招待 URL をコピーしました。"
-            };
-          });
+          return { status: "cancelled", message: "招待を送るのをやめました。" };
+        }).catch(function (error) {
+          if (window.console) {
+            window.console.warn("[ひっくり] 招待を送れませんでした", error);
+          }
+          return copyInstead(shareUrl, "LINE で送れなかったので、招待のリンクをコピーしました。", "招待のリンクを長押ししてコピーしてね");
         });
       }
 
-      return copyText(shareUrl).then(function () {
-        return {
-          status: "copied",
-          message: "LINE 共有に未対応のため、招待 URL をコピーしました。"
-        };
-      });
+      return copyInstead(shareUrl, "LINE の外なので、招待のリンクをコピーしました。トークに貼って送れます。", "招待のリンクを長押ししてコピーしてね");
     });
   }
 
@@ -480,6 +504,7 @@
     initIdentity: initIdentity,
     loadVersionInfo: loadVersionInfo,
     copyText: copyText,
+    showCopyBox: showCopyBox,
     shareRoom: shareRoom,
     shareResult: shareResult,
     buildFlexResultMessage: buildFlexResultMessage,

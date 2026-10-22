@@ -283,7 +283,7 @@
       return true;
     }
 
-    if (/エラー|失敗|満室|見つかりません|コピー|送信|終了|再戦|再接続|復帰|引き継|引継|観戦|置ける場所がありません/.test(app.status.message)) {
+    if (/エラー|失敗|満室|見つかりません|コピー|送信|送り|送る|届け|つなが|できませんでした|うまく|終了|再戦|再接続|復帰|引き継|引継|観戦|置ける場所がありません/.test(app.status.message)) {
       return true;
     }
 
@@ -436,10 +436,10 @@
 
   function getResultCaption(app) {
     if (app.rematch.incoming) {
-      return "相手が再戦を希望しています。続けますか？";
+      return "相手がもう一戦したいそうです。";
     }
     if (app.rematch.outgoing) {
-      return "再戦リクエストを送信しました。返答を待っています。";
+      return "再戦をお願いしました。返事を待っています。";
     }
     if (app.localTwoPlayer) {
       return "1台でもう一戦しますか？";
@@ -886,8 +886,9 @@
         ((app.quizLives || {})[app.myColor === Game.WHITE ? Game.BLACK : Game.WHITE] || 0) + "）" : "";
       setText(elements.resultScoreline, String(app.myColor === Game.BLACK ? counts.black : counts.white) + " - " +
         String(app.myColor === Game.BLACK ? counts.white : counts.black) + resultLives);
-      setText(elements.resultPrimaryButton, app.rematch.outgoing ? "送信中" : "はい");
-      setText(elements.resultSecondaryButton, app.rematch.outgoing ? "閉じる" : "いいえ");
+      // ボタンには、することを書く（「はい」「いいえ」にしない）
+      setText(elements.resultPrimaryButton, app.rematch.outgoing ? "返事を待っています…" : (app.rematch.incoming ? "🔁 再戦する" : "🔁 もう一戦する"));
+      setText(elements.resultSecondaryButton, app.rematch.incoming ? "ことわる" : "閉じる");
       elements.resultPrimaryButton.disabled = !!app.rematch.outgoing;
     }
 
@@ -1112,7 +1113,7 @@
         setText(elements.transportStatus, app.status.transport);
         setText(elements.modeStatus, app.status.mode);
         setText(elements.roomSummary, app.roomId ? ("ルーム " + app.roomId) : "まだルームはありません");
-        setText(elements.peerSummary, app.peerId ? ("ピアID " + app.peerId) : "シグナリングサーバーに接続中…");
+        setText(elements.peerSummary, app.peerId ? ("接続の番号 " + app.peerId) : "つなぐ準備をしています…");
         if (app.localTwoPlayer) {
           setAvatar(elements.myAvatar, "黒", "");
           setAvatar(elements.opponentAvatar, "白", "");

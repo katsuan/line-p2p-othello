@@ -148,6 +148,14 @@
       }
     }
 
+    // 失敗の知らせ：画面にはやさしい言葉だけ出し、くわしい中身はコンソールに残す
+    function failed(text, error) {
+      if (window.console && error) {
+        window.console.warn("[ひっくり] " + text, error);
+      }
+      return text;
+    }
+
     function setMessage(text) {
       app.status.message = text;
       render();
@@ -522,6 +530,7 @@
 
     var play = window.OthelloPlay.create(app, {
       clearRematch: clearRematch,
+      failed: failed,
       notifyJoined: notifyJoined,
       freshLives: freshLives,
       getRemotePeerId: getRemotePeerId,
@@ -558,7 +567,7 @@
           play.connectToRemotePeer(getRemotePeerId());
         }
       }, function (error) {
-        setMessage("ルーム監視でエラーが発生しました: " + error.message);
+        setMessage(failed("ルームの様子がわからなくなりました。ページを開きなおすと戻ります。", error));
       });
     }
 
@@ -566,7 +575,7 @@
       stopTimer("p2pTimer");
       app.p2pTimer = window.setTimeout(function () {
         if (!AppPeer.isConnected()) {
-          setMessage("着信 P2P 接続が5秒以内に完了しませんでした。相手の復帰を待つか、新しいルームを作成してください。");
+          setMessage("相手とつながりませんでした。相手が戻るのを待つか、新しい対局を作れます。");
         }
       }, P2P_TIMEOUT_MS);
     }
@@ -757,7 +766,7 @@
         !app.game.winner;
 
       if (app.role !== "host" && !canSyncWithPeer) {
-        setMessage("色変更は、P2P 接続後の開始前のみ両者で変更できます。");
+        setMessage("色は、相手とつながってから始めるまでのあいだに変えられます。");
         return;
       }
 
@@ -779,26 +788,26 @@
     function bootstrapPeer() {
       return AppPeer.init(buildPeerId(), {
         onPeerOpen: function (peerId) { app.peerId = peerId; render(); },
-        onIncomingConnection: function () { setOpponentStatus("ピア接続要求を受信しました"); },
+        onIncomingConnection: function () { setOpponentStatus("つないでいます…"); },
         onConnectionOpen: play.startP2PPlay,
         onData: play.handlePeerData,
         onConnectionClose: function () {
           app.pendingPeerTarget = "";
           if (!play.handleResumeConnectionLost()) {
-            play.beginReconnect("P2P 接続が切断されました。");
+            play.beginReconnect("相手との接続が切れました。");
           }
         },
         onConnectionError: function (error) {
           app.pendingPeerTarget = "";
           if (!play.handleResumeConnectionLost()) {
-            play.beginReconnect("P2P 接続エラーが発生しました: " + error.message);
+            play.beginReconnect(failed("相手との通信がうまくいきませんでした。", error));
           }
         },
-        onPeerError: function (error) { setMessage("PeerJS エラー: " + error.message); },
+        onPeerError: function (error) { setMessage(failed("つなぐ準備がうまくいきませんでした。電波のよいところで、もう一度ためしてね。", error)); },
         onPeerDisconnected: function () {
           app.pendingPeerTarget = "";
           if (!play.handleResumeConnectionLost()) {
-            play.beginReconnect("ピアのシグナリング接続が切断されました。");
+            play.beginReconnect("通信が切れました。");
           }
         }
       });
@@ -845,7 +854,11 @@
               return;
             }
             Platform.copyText(app.roomId).then(function (copied) {
-              setMessage(copied ? "ルームIDをコピーしました。" : "ルームIDのコピーに失敗しました。");
+              if (copied) {
+                setMessage("ルームIDをコピーしました。");
+              } else {
+                Platform.showCopyBox("ルームIDを長押ししてコピーしてね", app.roomId);
+              }
             });
           },
           onQuickReconnect: reconnectCurrentRoom,
@@ -855,7 +868,9 @@
               return;
             }
             Platform.shareRoom(app.roomId, app.roomUrl).then(function (result) {
-              setMessage(result.message);
+              if (result.message) {
+                setMessage(result.message);
+              }
             });
           },
           onNewRoom: function () { window.location.href = buildPageUrl(Platform.generateId("room"), false); },
@@ -875,7 +890,24 @@
             render();
           },
           onRetryReconnect: play.retryReconnectNow,
-          onHardReload: function () { AppPeer.disconnect(); Platform.reload(buildPageUrl(app.roomId, app.joinRequested), true); },
+          onHardReload: function () {
+            var reopen = function () { AppPeer.disconnect(); Platform.reload(buildPageUrl(app.roomId, app.joinRequested), true); };
+            // この端末に残した対局の記録を消すので、元に戻せない操作として確かめる
+            if (!window.LineShareUI || typeof window.LineShareUI.ask !== "function") {
+              reopen();
+              return;
+            }
+            window.LineShareUI.ask({
+              title: "最初から開きなおしますか？",
+              text: "この端末に残した対局の続きは消えます。",
+              ok: "開きなおす",
+              danger: true
+            }).then(function (ok) {
+              if (ok) {
+                reopen();
+              }
+            });
+          },
           onStartGame: play.startMatch,
           onResumeContinue: play.resumeCurrentGame,
           onResumeRestart: play.restartReturnedGame,
@@ -897,14 +929,26 @@
             var counts = Game.countDiscs(app.game.board);
             var mine = app.myColor === Game.WHITE ? counts.white : counts.black;
             var theirs = app.myColor === Game.WHITE ? counts.black : counts.white;
-            Platform.shareResult({
+            var info = {
               outcome: app.myColor ? Game.outcomeForColor(app.game.winner, app.myColor) : "draw",
               myName: app.displayName || "わたし",
               opponentName: app.opponentDisplayName || (app.opponentMode === "com" ? "COM" : "相手"),
               mine: mine,
               theirs: theirs
-            }).then(function (result) {
-              setMessage(result.message);
+            };
+            var send = function () {
+              return Platform.shareResult(info).then(function (result) {
+                if (result.message) {
+                  setMessage(result.message);
+                }
+                return result.status === "shared";
+              });
+            };
+            send().then(function (sent) {
+              // 送ったあと：続けて別のトークにも送る・閉じる（Q キット）
+              if (sent && window.LineShareUI && typeof window.LineShareUI.afterSent === "function") {
+                window.LineShareUI.afterSent({ resend: send, title: "結果を送りました" });
+              }
             });
           },
           onResultSecondary: function () {
@@ -950,7 +994,7 @@
           setTransport("エラー");
           setOpponentStatus("利用不可");
           setMode("停止");
-          setMessage(error.message || String(error));
+          setMessage(failed("うまく準備できませんでした。電波のよいところで、ページを開きなおしてね。", error));
         });
       }
     };

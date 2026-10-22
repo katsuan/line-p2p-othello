@@ -27,8 +27,8 @@
   <meta name="twitter:card" content="summary_large_image">
   <!-- Q キット（おくるんの共通部品）。色と字は css/styles.css の :root で、ひっくりの緑に -->
   <link rel="stylesheet" href="https://katsuan.github.io/line-share/shared/ui.css">
-  <link rel="stylesheet" href="css/styles.css?v=202610221446">
-  <link rel="stylesheet" href="css/board.css?v=202610221446">
+  <link rel="stylesheet" href="css/styles.css?v=202610221619">
+  <link rel="stylesheet" href="css/board.css?v=202610221619">
 </head>
 <body class="boot-loading">
   <p class="boot-note" aria-live="polite">準備しています…</p>
@@ -67,16 +67,16 @@
           </div>
           <!-- 招待中は「LINEで招待」をいちばん上に。ルームIDは LINE 以外で伝えたいとき用 -->
           <div id="roomActionRow" class="button-row room-action-row hidden">
-            <button id="shareButton" class="ls-button is-primary" type="button">LINEで招待</button>
+            <button id="shareButton" class="ls-button is-primary" type="button">💬 LINEで招待</button>
             <div id="roomActionNote" class="room-action-note hidden">このルームでそのまま進めます。</div>
           </div>
           <!-- ルームIDとコピーは1行に（スマホで縦に場所を取らない） -->
           <div id="roomCurrentRow" class="room-current-row hidden">
             <div id="roomCurrentId" class="room-current-id">room-xxxxxx</div>
-            <button id="copyRoomIdButton" class="ls-button" type="button">コピー</button>
+            <button id="copyRoomIdButton" class="ls-button" type="button">📋 コピー</button>
           </div>
           <div id="roomCurrentActions" class="button-row room-current-actions hidden">
-            <button id="quickReconnectButton" class="ls-button" type="button">再接続</button>
+            <button id="quickReconnectButton" class="ls-button" type="button">🔄 再接続する</button>
           </div>
         </div>
         <details id="roomTools" class="ls-fold room-tools">
@@ -85,12 +85,12 @@
             <div class="ls-field">
               <label class="ls-label" for="roomInput">ルームID</label>
               <div class="link-row">
-                <input id="roomInput" class="ls-input" type="text" value="" placeholder="ルームIDを入力">
+                <input id="roomInput" class="ls-input" type="text" value="" placeholder="ルームIDを入力" enterkeyhint="go" autocapitalize="off" spellcheck="false">
                 <button id="joinRoomButton" class="ls-button" type="button">参加する</button>
               </div>
             </div>
             <div class="room-tools-actions">
-              <button id="newRoomButton" class="ls-button" type="button">新しい対局を作る</button>
+              <button id="newRoomButton" class="ls-button" type="button">＋ 新しい対局を作る</button>
             </div>
           </div>
         </details>
@@ -199,13 +199,13 @@
         <div id="reconnectNotice" class="status-banner hidden">
           <div id="reconnectText">接続状態を確認しています。</div>
           <div class="ls-actions">
-            <button id="retryReconnectButton" class="ls-button" type="button">再接続する</button>
-            <button id="reloadButton" class="ls-button" type="button">初期化して再読込</button>
+            <button id="retryReconnectButton" class="ls-button" type="button">🔄 再接続する</button>
+            <button id="reloadButton" class="ls-button" type="button">最初から開きなおす</button>
           </div>
         </div>
 
         <div id="resumeNotice" class="status-banner hidden">
-          <div id="resumeText">相手が戻りました。再開方法を選んでください。</div>
+          <div id="resumeText">相手が戻りました。どこから続けるか選べます。</div>
           <div id="resumeActions" class="ls-actions">
             <button id="resumeContinueButton" class="ls-button is-primary" type="button">今の盤面から再開</button>
             <button id="resumeRestartButton" class="ls-button" type="button">最初からやり直す</button>
@@ -251,11 +251,11 @@
               <div id="resultCaption" class="result-caption">このルームで続けてもう一戦しますか？</div>
               <div id="resultScoreline" class="result-scoreline">0 - 0</div>
               <div class="ls-actions result-actions">
-                <button id="resultPrimaryButton" class="ls-button is-primary" type="button">はい</button>
-                <button id="resultSecondaryButton" class="ls-button" type="button">いいえ</button>
+                <button id="resultPrimaryButton" class="ls-button is-primary" type="button">🔁 もう一戦する</button>
+                <button id="resultSecondaryButton" class="ls-button" type="button">閉じる</button>
               </div>
               <!-- 対局の結果を、招待カードと同じ緑のカードで LINE に送る（js/platform.js の shareResult） -->
-              <button id="resultShareButton" class="ls-button result-share-button" type="button">🏆 結果をカードで送る</button>
+              <button id="resultShareButton" class="ls-button result-share-button" type="button">💬 結果をLINEで送る</button>
             </div>
           </div>
         </div>
@@ -291,8 +291,8 @@
               <div id="roomSummary" class="debug-value">まだルームはありません</div>
             </div>
             <div class="debug-item">
-              <div class="debug-label">ピアID</div>
-              <div id="peerSummary" class="debug-value">シグナリングサーバーに接続中…</div>
+              <div class="debug-label">接続の番号</div>
+              <div id="peerSummary" class="debug-value">つなぐ準備をしています…</div>
             </div>
           </div>
         </details>
@@ -307,18 +307,18 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-  <script src="js/version.js?v=202610221446"></script>
-  <script src="js/firebase.js?v=202610221446"></script>
-  <script src="js/webrtc.js?v=202610221446"></script>
-  <script src="js/game.js?v=202610221446"></script>
-  <script src="js/quiz.js?v=202610221446"></script>
-  <script src="js/tex.js?v=202610221446"></script>
-  <script src="js/platform.js?v=202610221446"></script>
-  <script src="js/matchmaking.js?v=202610221446"></script>
-  <script src="js/ui.js?v=202610221446"></script>
-  <script src="js/play.js?v=202610221446"></script>
-  <script src="js/session.js?v=202610221446"></script>
-  <script src="js/main.js?v=202610221446"></script>
+  <script src="js/version.js?v=202610221619"></script>
+  <script src="js/firebase.js?v=202610221619"></script>
+  <script src="js/webrtc.js?v=202610221619"></script>
+  <script src="js/game.js?v=202610221619"></script>
+  <script src="js/quiz.js?v=202610221619"></script>
+  <script src="js/tex.js?v=202610221619"></script>
+  <script src="js/platform.js?v=202610221619"></script>
+  <script src="js/matchmaking.js?v=202610221619"></script>
+  <script src="js/ui.js?v=202610221619"></script>
+  <script src="js/play.js?v=202610221619"></script>
+  <script src="js/session.js?v=202610221619"></script>
+  <script src="js/main.js?v=202610221619"></script>
   <script src="https://katsuan.github.io/line-share/shared/ui.js" defer></script>
   <script src="https://katsuan.github.io/line-share/shared/tool-share.js" data-tool="hiqri" defer></script>
 <!-- 電波がなくても開けるように（sw.js） -->

@@ -29,22 +29,15 @@ body {
   box-shadow: 0 0 0 3px rgba(31, 122, 69, 0.2);
 }
 
-/* 起動中（LINE ログイン・ルーム確認）は「準備しています…」だけを出す */
+/* 起動中（LINE ログイン・ルーム確認）は、始め方の欄と同じ大きさの読みこみ中の箱（Q キットの ls-skeleton と同じ見た目）。
+   中身は見えないだけで場所をとっているので、読みこみが終わっても位置がずれない */
 .boot-note {
-  display: none;
-}
-
-body.boot-loading .boot-note {
-  display: block;
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: 45%;
-  margin: 0;
-  text-align: center;
-  font-weight: 700;
-  opacity: 0.6;
-  z-index: 5;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .top-actions,
@@ -52,10 +45,38 @@ body.boot-loading .boot-note {
   transition: opacity 160ms ease;
 }
 
-body.boot-loading .top-actions,
+body.boot-loading .top-actions {
+  position: relative;
+  pointer-events: none;
+  border-radius: var(--ls-radius-md);
+  background: linear-gradient(90deg, var(--ls-surface-sub) 25%, var(--ls-surface) 50%, var(--ls-surface-sub) 75%);
+  background-size: 200% 100%;
+  animation: ls-skeleton 1.2s linear infinite;
+}
+
+body.boot-loading .top-actions > * {
+  visibility: hidden;
+}
+
+body.boot-loading .top-actions::after {
+  content: "準備しています…";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: var(--ls-subtext);
+}
+
 body.boot-loading .board-layout {
   opacity: 0;
   pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.boot-loading .top-actions {
+    animation: none;
+  }
 }
 
 /* ルームを選ぶ前は盤面を出さない（押せそうに見えて迷うため）。始め方の3択だけに集中させる */
@@ -94,6 +115,13 @@ body.is-lobby .board-shell {
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.08em;
+}
+
+/* 狭い画面（320px など）では、名前とロゴを優先して版の札を隠す */
+@media (max-width: 360px) {
+  .version-badge {
+    display: none;
+  }
 }
 
 .top-actions {
@@ -326,6 +354,11 @@ body.is-lobby .board-shell {
       radial-gradient(circle at top left, rgba(31, 122, 69, 0.22), transparent 28%),
       radial-gradient(circle at bottom right, rgba(18, 107, 58, 0.18), transparent 24%),
       var(--ls-bg);
+  }
+
+  :root[data-ls-dark="auto"] .version-badge {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.5);
   }
 
   :root[data-ls-dark="auto"] .ls-input:focus {
