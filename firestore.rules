@@ -1,20 +1,29 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isRoomDocument() {
-      return request.resource.data.roomId is string
-        && request.resource.data.hostUserId is string
-        && request.resource.data.hostPeerId is string
-        && request.resource.data.guestUserId is string
-        && request.resource.data.guestPeerId is string
-        && request.resource.data.status in ['waiting', 'ready', 'playing'];
+    function shortText(value, max) {
+      return value is string && value.size() <= max;
     }
 
-    // このデモはクライアント側の LIFF ID を使う構成で、Firebase Auth は前提にしていません。
-    // そのため認可よりも、ルームデータの構造検証を優先しています。
+    // ルームに書けるのは、決まった項目と長さだけ
+    function isRoomDocument(roomId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['roomId', 'hostUserId', 'hostPeerId', 'guestUserId', 'guestPeerId', 'status'])
+        && data.roomId == roomId
+        && roomId.matches('^[A-Za-z0-9_-]{1,40}$')
+        && shortText(data.hostUserId, 64)
+        && shortText(data.hostPeerId, 64)
+        && shortText(data.guestUserId, 64)
+        && shortText(data.guestPeerId, 64)
+        && data.status in ['waiting', 'ready', 'playing'];
+    }
+
+    // このアプリは Firebase Auth を使っていないため、本人は決められない。
+    // そのかわり、ルーム ID を知っている人だけが読めるようにし（一覧は出さない）、書ける形を決める
     match /rooms/{roomId} {
-      allow read: if true;
-      allow create, update: if isRoomDocument();
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isRoomDocument(roomId);
       allow delete: if false;
     }
   }

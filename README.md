@@ -186,6 +186,8 @@ GitHub Pages を GitHub Actions 配信にしている場合、`.github/workflows
 
 対局進行は P2P を優先します。
 
+Firestore のルール（`firestore.rules`）は、ルーム ID を知っている人だけが読め（一覧は出さない）、書ける項目と長さを決めています。変えたら Firebase コンソールの Firestore →「ルール」に貼って公開します。
+
 ## 将来の構想（メモ）
 
 - **観戦モード**：同じルームに3人目以降が入ったとき、満室で断らずに観戦できるようにする
