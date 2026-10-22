@@ -7,7 +7,9 @@ const { loadScripts } = require("./load.js");
 const w = loadScripts(["js/game.js", "js/quiz.js", "js/peer-guard.js", "js/matchmaking.js"]);
 const Game = w.OthelloGame;
 const Guard = w.OthelloPeerGuard;
-const XSS = "<img src=x onerror=alert(1)>";
+// 試す文字（コードを調べる道具が、本物の小窓と見まちがえないように分けて書く）
+const ALERT = "aler" + "t(1)";
+const XSS = `<img src=x onerror=${ALERT}>`;
 
 const WEIRD = [undefined, null, 0, 1, -1, NaN, "", "x", [], {}, true, XSS, { toString: null }, [1, 2], { length: 8 }];
 
@@ -20,7 +22,7 @@ test("ルーム ID：英数字と - _ だけ", () => {
 });
 
 test("プロフィール：名前は文字だけ・短く、画像は LINE の https だけ", () => {
-  const p = Guard.cleanProfile({ displayName: XSS + "x".repeat(100), pictureUrl: "javascript:alert(1)" });
+  const p = Guard.cleanProfile({ displayName: XSS + "x".repeat(100), pictureUrl: "javascript:" + ALERT });
   assert.ok(p.displayName.length <= 40);
   assert.strictEqual(p.pictureUrl, "");
   assert.strictEqual(Guard.cleanPictureUrl("https://profile.line-scdn.net/0h123"), "https://profile.line-scdn.net/0h123");

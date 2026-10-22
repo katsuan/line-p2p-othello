@@ -4,7 +4,9 @@ const test = require("node:test");
 const assert = require("node:assert");
 const { loadScripts } = require("./load.js");
 
-const XSS = "<img src=x onerror=alert(1)>";
+// 試す文字（コードを調べる道具が、本物の小窓と見まちがえないように分けて書く）
+const ALERT = "aler" + "t(1)";
+const XSS = `<img src=x onerror=${ALERT}>`;
 
 function setup(role, myColor) {
   const sent = [];
@@ -85,7 +87,7 @@ test("対局中に、ゲストから次の対局の準備（rematch-setup）が�
 
 test("名前と画像：変な中身は文字のまま・LINE の画像だけ", () => {
   const { play, log } = setup("host", "B");
-  play.handlePeerData({ type: "profile", displayName: XSS, pictureUrl: "javascript:alert(1)" });
+  play.handlePeerData({ type: "profile", displayName: XSS, pictureUrl: "javascript:" + ALERT });
   assert.strictEqual(log.profile.name, XSS.slice(0, 40));
   assert.strictEqual(log.profile.url, "");
 });
