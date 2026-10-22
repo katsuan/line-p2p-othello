@@ -145,10 +145,6 @@
       }
     },
 
-    getPeerId: function () {
-      return this.state.peerId;
-    },
-
     isConnected: function () {
       return !!(this.state.connection && this.state.connection.open);
     }

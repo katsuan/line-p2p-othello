@@ -24,23 +24,23 @@
   <meta property="og:image:height" content="630">
   <meta property="og:locale" content="ja_JP">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="stylesheet" href="css/styles.css?v=202610211352">
-  <link rel="stylesheet" href="css/board.css?v=202610211352">
+  <!-- Q キット（おくるんの共通部品）。色と字は css/styles.css の :root で、ひっくりの緑に -->
+  <link rel="stylesheet" href="https://katsuan.github.io/line-share/shared/ui.css">
+  <link rel="stylesheet" href="css/styles.css?v=202610221103">
+  <link rel="stylesheet" href="css/board.css?v=202610221103">
 </head>
 <body class="boot-loading">
   <p class="boot-note" aria-live="polite">準備しています…</p>
-  <!-- 友だちの参加などのお知らせ（数秒で消える） -->
-  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <div class="app">
-    <section class="panel topbar">
+    <section class="ls-panel topbar">
       <div class="title-group">
-        <div class="title-row">
+        <div class="ls-brand">
           <!-- 名前（ひっくり）と横長のロゴ（HiQRi）。アイコン・ロゴは tools/icon.py で作る -->
-          <h1 class="brand-name"><img class="brand-icon" src="assets/icon.svg" alt="" width="32" height="32">ひっくり</h1>
-          <img class="brand-logo" src="assets/logo.svg" alt="HiQRi" width="78" height="28">
+          <h1 class="ls-brand-name"><img class="ls-brand-icon" src="assets/icon.svg" alt="" width="32" height="32">ひっくり</h1>
+          <img class="ls-brand-logo" src="assets/logo.svg" alt="HiQRi" width="78" height="28">
           <span id="versionBadge" class="version-badge" aria-label="コミットバージョン">----</span>
         </div>
-        <p class="brand-copy">ひっくり返せ、その一手</p>
+        <p class="ls-brand-copy">ひっくり返せ、その一手</p>
       </div>
       <div class="top-actions">
         <div class="room-overview">
@@ -51,43 +51,45 @@
           <div id="roomStateHint" class="room-state-hint">友だちとはLINEで招待して対戦します。ひとりならCOMとすぐ練習できます。</div>
           <!-- ルームがないときの主な2つの始め方。ルームIDでの参加は下の折りたたみ（補助的な操作） -->
           <div id="startChoices" class="start-choices">
-            <button id="newFriendRoomButton" class="button-primary start-choice" type="button">
+            <button id="newFriendRoomButton" class="ls-button is-primary start-choice" type="button">
               <span class="start-choice-title">👥 友だちと対戦</span>
               <span class="start-choice-sub">LINEで招待する</span>
             </button>
-            <button id="newComRoomButton" class="button-secondary start-choice" type="button">
+            <button id="newComRoomButton" class="ls-button start-choice" type="button">
               <span class="start-choice-title">🤖 COMと練習</span>
               <span class="start-choice-sub">ひとりですぐ遊ぶ</span>
             </button>
-            <button id="newLocalRoomButton" class="button-secondary start-choice" type="button">
+            <button id="newLocalRoomButton" class="ls-button start-choice" type="button">
               <span class="start-choice-title">📱 1台で2人</span>
               <span class="start-choice-sub">この端末を交代で使う</span>
             </button>
           </div>
           <!-- 招待中は「LINEで招待」をいちばん上に。ルームIDは LINE 以外で伝えたいとき用 -->
           <div id="roomActionRow" class="button-row room-action-row hidden">
-            <button id="shareButton" class="button-primary" type="button">LINEで招待</button>
+            <button id="shareButton" class="ls-button is-primary" type="button">LINEで招待</button>
             <div id="roomActionNote" class="room-action-note hidden">このルームでそのまま進めます。</div>
           </div>
           <!-- ルームIDとコピーは1行に（スマホで縦に場所を取らない） -->
           <div id="roomCurrentRow" class="room-current-row hidden">
             <div id="roomCurrentId" class="room-current-id">room-xxxxxx</div>
-            <button id="copyRoomIdButton" class="button-secondary button-compact" type="button">コピー</button>
+            <button id="copyRoomIdButton" class="ls-button" type="button">コピー</button>
           </div>
           <div id="roomCurrentActions" class="button-row room-current-actions hidden">
-            <button id="quickReconnectButton" class="button-secondary button-compact" type="button">再接続</button>
+            <button id="quickReconnectButton" class="ls-button" type="button">再接続</button>
           </div>
         </div>
-        <details id="roomTools" class="room-tools">
+        <details id="roomTools" class="ls-fold room-tools">
           <summary id="roomToolsSummary">ルームIDで参加</summary>
-          <div class="room-tools-body">
-            <label class="field-label" for="roomInput">ルームID</label>
-            <div class="link-row">
-              <input id="roomInput" class="room-input" type="text" value="" placeholder="ルームIDを入力">
-              <button id="joinRoomButton" class="button-secondary" type="button">参加する</button>
+          <div class="ls-fold-body room-tools-body">
+            <div class="ls-field">
+              <label class="ls-label" for="roomInput">ルームID</label>
+              <div class="link-row">
+                <input id="roomInput" class="ls-input" type="text" value="" placeholder="ルームIDを入力">
+                <button id="joinRoomButton" class="ls-button" type="button">参加する</button>
+              </div>
             </div>
             <div class="room-tools-actions">
-              <button id="newRoomButton" class="button-secondary" type="button">新しい対局を作る</button>
+              <button id="newRoomButton" class="ls-button" type="button">新しい対局を作る</button>
             </div>
           </div>
         </details>
@@ -95,17 +97,17 @@
     </section>
 
     <section class="board-layout">
-      <div class="panel board-shell">
+      <div class="ls-panel board-shell">
         <!-- 対局の準備：上から「対戦相手 → 盤面 → ルール（→ 問題）→ 色 → START」。
              短い選択を先に、教養で広がる問題の一覧を後ろに置き、そのすぐ下で START できるようにする -->
         <div id="hostSetupPanel" class="host-setup-panel hidden">
           <div class="setup-heading">対局の準備</div>
           <div id="hostSetupOpponentSlot" class="rule-row setup-opponent">
             <span class="host-setup-label">対戦相手</span>
-            <div class="control-actions">
-              <button id="humanOpponentButton" class="button-chip active" type="button">友だち</button>
-              <button id="comOpponentButton" class="button-chip" type="button">COM</button>
-              <button id="localOpponentButton" class="button-chip" type="button">1台で</button>
+            <div class="ls-chips">
+              <button id="humanOpponentButton" class="ls-chip" aria-pressed="true" type="button">友だち</button>
+              <button id="comOpponentButton" class="ls-chip" aria-pressed="false" type="button">COM</button>
+              <button id="localOpponentButton" class="ls-chip" aria-pressed="false" type="button">1台で</button>
             </div>
           </div>
           <!-- ルール（ホストが決める）。教養モードは問題に正解すると石を置ける -->
@@ -113,32 +115,32 @@
             <p id="rulePostGameNote" class="small rule-post-game hidden">対局が終わりました。ルールを変えると、相手といっしょに次の対局の準備に移ります。</p>
             <div class="rule-row">
               <span class="host-setup-label">盤面</span>
-              <div id="sizeChoices" class="control-actions"></div>
+              <div id="sizeChoices" class="ls-chips"></div>
             </div>
             <div class="rule-row">
               <span class="host-setup-label">ルール</span>
-              <div class="control-actions">
-                <button id="ruleNormalButton" class="button-chip active" type="button">ふつう</button>
-                <button id="ruleQuizButton" class="button-chip" type="button">📚 教養</button>
+              <div class="ls-chips">
+                <button id="ruleNormalButton" class="ls-chip" aria-pressed="true" type="button">ふつう</button>
+                <button id="ruleQuizButton" class="ls-chip" aria-pressed="false" type="button">📚 教養</button>
               </div>
             </div>
             <div id="quizRuleRows" class="hidden">
               <div class="small host-setup-hint">置けるマスを押すと4択の問題が出ます。正解すると石を置けます。不正解のときはライフが減ってもう一度選べ、ライフがなければ相手の番です。石の数が同じなら、ライフが多いほうの勝ちです。</div>
               <div class="rule-row">
                 <span class="host-setup-label">回答</span>
-                <div class="control-actions rule-wrap">
-                  <button class="button-chip" type="button" data-answer-mode="choice">4択</button>
-                  <button class="button-chip" type="button" data-answer-mode="input">✏️ 入力</button>
+                <div class="ls-chips">
+                  <button class="ls-chip" aria-pressed="false" type="button" data-answer-mode="choice">4択</button>
+                  <button class="ls-chip" aria-pressed="false" type="button" data-answer-mode="input">✏️ 入力</button>
                 </div>
               </div>
               <div id="answerModeNote" class="small host-setup-hint hidden">入力：漢字の読み（ひらがな）・数学・一般教養は文字で答えます。英単語・ことわざ・四字熟語の意味は4択のままです。</div>
               <div class="rule-row">
                 <span class="host-setup-label">ライフ</span>
-                <div id="lifeChoices" class="control-actions rule-wrap"></div>
+                <div id="lifeChoices" class="ls-chips"></div>
               </div>
               <div class="rule-row">
                 <span class="host-setup-label">回答タイム</span>
-                <div id="timeChoices" class="control-actions rule-wrap"></div>
+                <div id="timeChoices" class="ls-chips"></div>
               </div>
               <div class="host-setup-label">問題（いくつでも選べます）</div>
               <!-- ジャンルごとの行に、レベルのボタンを並べる。押すたびに ON/OFF -->
@@ -160,7 +162,7 @@
             <div id="controlHint" class="small host-setup-hint">黒が先手です。ボタンで自分の色だけを切り替えます。</div>
           </div>
 
-          <button id="setupStartButton" class="button-primary setup-start-button hidden" type="button">START</button>
+          <button id="setupStartButton" class="ls-button is-primary is-block setup-start-button hidden" type="button">START</button>
 
         </div>
 
@@ -195,24 +197,24 @@
 
         <div id="reconnectNotice" class="status-banner hidden">
           <div id="reconnectText">接続状態を確認しています。</div>
-          <div class="status-actions">
-            <button id="retryReconnectButton" class="button-secondary" type="button">再接続する</button>
-            <button id="reloadButton" class="button-secondary" type="button">初期化して再読込</button>
+          <div class="ls-actions">
+            <button id="retryReconnectButton" class="ls-button" type="button">再接続する</button>
+            <button id="reloadButton" class="ls-button" type="button">初期化して再読込</button>
           </div>
         </div>
 
         <div id="resumeNotice" class="status-banner hidden">
           <div id="resumeText">相手が戻りました。再開方法を選んでください。</div>
-          <div id="resumeActions" class="status-actions">
-            <button id="resumeContinueButton" class="button-primary" type="button">今の盤面から再開</button>
-            <button id="resumeRestartButton" class="button-secondary" type="button">最初からやり直す</button>
+          <div id="resumeActions" class="ls-actions">
+            <button id="resumeContinueButton" class="ls-button is-primary" type="button">今の盤面から再開</button>
+            <button id="resumeRestartButton" class="ls-button" type="button">最初からやり直す</button>
           </div>
         </div>
 
         <div class="board-stage">
           <div id="board" class="board" aria-label="盤"></div>
-          <div id="quizOverlay" class="quiz-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="quizText">
-            <div class="quiz-card">
+          <div id="quizOverlay" class="ls-sheet quiz-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="quizText">
+            <div class="ls-sheet-card quiz-card">
               <!-- 相手が答えているときだけ出す（見るだけ。「隠す」で以後は出さない） -->
               <div id="quizWatchHead" class="quiz-watch-head hidden">
                 <span id="quizWatchTitle">👀 相手が回答中…</span>
@@ -226,12 +228,12 @@
               <div id="quizChoices" class="quiz-choices"></div>
               <!-- 入力で答えるとき（ひらがな・カタカナ、全角・半角はどちらでもよい） -->
               <form id="quizInputForm" class="quiz-input hidden" autocomplete="off">
-                <input id="quizInput" class="quiz-input-field" type="text" inputmode="text" enterkeyhint="done"
+                <input id="quizInput" class="ls-input quiz-input-field" type="text" inputmode="text" enterkeyhint="done"
                   autocapitalize="off" spellcheck="false" placeholder="答えを入力" aria-label="答え">
-                <button id="quizInputSubmit" class="button-primary quiz-input-submit" type="submit">答える</button>
+                <button id="quizInputSubmit" class="ls-button is-primary quiz-input-submit" type="submit">答える</button>
               </form>
               <div id="quizResult" class="quiz-result" aria-live="polite"></div>
-              <button id="quizGiveUp" class="button-ghost quiz-give-up" type="button">わからない（相手の番にする）</button>
+              <button id="quizGiveUp" class="ls-button quiz-give-up" type="button">わからない（相手の番にする）</button>
             </div>
           </div>
           <button id="quizWatchPill" class="quiz-watch-pill hidden" type="button"><span id="quizWatchPillText">相手が回答中…</span><span>👀 見る</span></button>
@@ -239,7 +241,7 @@
             <div class="start-card">
               <div id="startWord" class="start-word">START</div>
               <div id="startCaption" class="start-caption">ホストが開始を準備しています。</div>
-              <button id="startButton" class="button-primary start-button" type="button">START</button>
+              <button id="startButton" class="ls-button is-primary start-button" type="button">START</button>
             </div>
           </div>
           <div id="resultOverlay" class="result-overlay hidden">
@@ -247,23 +249,23 @@
               <div id="resultWord" class="result-word">WIN</div>
               <div id="resultCaption" class="result-caption">このルームで続けてもう一戦しますか？</div>
               <div id="resultScoreline" class="result-scoreline">0 - 0</div>
-              <div class="result-actions">
-                <button id="resultPrimaryButton" class="button-primary" type="button">はい</button>
-                <button id="resultSecondaryButton" class="button-ghost" type="button">いいえ</button>
+              <div class="ls-actions result-actions">
+                <button id="resultPrimaryButton" class="ls-button is-primary" type="button">はい</button>
+                <button id="resultSecondaryButton" class="ls-button" type="button">いいえ</button>
               </div>
               <!-- 対局の結果を、招待カードと同じ緑のカードで LINE に送る（js/platform.js の shareResult） -->
-              <button id="resultShareButton" class="button-ghost result-share-button" type="button">🏆 結果をカードで送る</button>
+              <button id="resultShareButton" class="ls-button result-share-button" type="button">🏆 結果をカードで送る</button>
             </div>
           </div>
         </div>
       </div>
 
-      <aside class="panel sidebar">
+      <aside class="ls-panel sidebar">
         <div id="messageBox" class="message-box">準備しています…</div>
 
-        <details class="debug-panel">
-          <summary>遊び方</summary>
-          <div class="debug-grid info-grid">
+        <details class="ls-fold">
+          <summary><span class="ls-fold-icon" aria-hidden="true">📖</span>遊び方</summary>
+          <div class="ls-fold-body debug-grid info-grid">
             <div class="small info-pill">置ける場所に点が出ます（📚 教養モードでは枠で囲みます）</div>
             <div class="small info-pill">📚 教養モードは、問題に正解すると石を置けます</div>
             <div class="small info-pill">相手を待つ間はCOMと練習できます</div>
@@ -272,9 +274,9 @@
           </div>
         </details>
 
-        <details class="debug-panel">
-          <summary>接続情報を確認</summary>
-          <div class="debug-grid status-grid">
+        <details class="ls-fold">
+          <summary><span class="ls-fold-icon" aria-hidden="true">📡</span>接続情報を確認</summary>
+          <div class="ls-fold-body debug-grid status-grid">
             <div class="debug-item">
               <div class="debug-label">通信方式</div>
               <div id="transportStatus" class="debug-value">起動中…</div>
@@ -304,18 +306,19 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-  <script src="js/version.js?v=202610211352"></script>
-  <script src="js/firebase.js?v=202610211352"></script>
-  <script src="js/webrtc.js?v=202610211352"></script>
-  <script src="js/game.js?v=202610211352"></script>
-  <script src="js/quiz.js?v=202610211352"></script>
-  <script src="js/tex.js?v=202610211352"></script>
-  <script src="js/platform.js?v=202610211352"></script>
-  <script src="js/matchmaking.js?v=202610211352"></script>
-  <script src="js/ui.js?v=202610211352"></script>
-  <script src="js/play.js?v=202610211352"></script>
-  <script src="js/session.js?v=202610211352"></script>
-  <script src="js/main.js?v=202610211352"></script>
+  <script src="js/version.js?v=202610221103"></script>
+  <script src="js/firebase.js?v=202610221103"></script>
+  <script src="js/webrtc.js?v=202610221103"></script>
+  <script src="js/game.js?v=202610221103"></script>
+  <script src="js/quiz.js?v=202610221103"></script>
+  <script src="js/tex.js?v=202610221103"></script>
+  <script src="js/platform.js?v=202610221103"></script>
+  <script src="js/matchmaking.js?v=202610221103"></script>
+  <script src="js/ui.js?v=202610221103"></script>
+  <script src="js/play.js?v=202610221103"></script>
+  <script src="js/session.js?v=202610221103"></script>
+  <script src="js/main.js?v=202610221103"></script>
+  <script src="https://katsuan.github.io/line-share/shared/ui.js" defer></script>
   <script src="https://katsuan.github.io/line-share/shared/tool-share.js" data-tool="hiqri" defer></script>
 </body>
 </html>

@@ -18,6 +18,11 @@
     }
   }
 
+  // Q キットのチップ（ls-chip）の「選んでいる」
+  function setPressed(element, pressed) {
+    element.setAttribute("aria-pressed", pressed ? "true" : "false");
+  }
+
   function setAvatar(element, name, pictureUrl) {
     if (!element) {
       return;
@@ -493,10 +498,8 @@
       roomCurrentActions: documentRef.getElementById("roomCurrentActions"),
       roomCurrentId: documentRef.getElementById("roomCurrentId"),
       quickReconnectButton: documentRef.getElementById("quickReconnectButton"),
-      hostInviteActions: documentRef.getElementById("hostInviteActions"),
       roomActionRow: documentRef.getElementById("roomActionRow"),
       roomActionNote: documentRef.getElementById("roomActionNote"),
-      roomTools: documentRef.getElementById("roomTools"),
       roomToolsSummary: documentRef.getElementById("roomToolsSummary"),
       copyRoomIdButton: documentRef.getElementById("copyRoomIdButton"),
       joinRoomButton: documentRef.getElementById("joinRoomButton"),
@@ -571,7 +574,6 @@
       quizOverlay: documentRef.getElementById("quizOverlay"),
       quizGenre: documentRef.getElementById("quizGenre"),
       quizCountdown: documentRef.getElementById("quizCountdown"),
-      toast: documentRef.getElementById("toast"),
       quizInputForm: documentRef.getElementById("quizInputForm"),
       quizInput: documentRef.getElementById("quizInput"),
       quizInputSubmit: documentRef.getElementById("quizInputSubmit"),
@@ -588,7 +590,7 @@
     var renderedQuizPrompt = null;
 
     function chip(label, value, attr) {
-      return '<button class="button-chip" type="button" ' + attr + '="' + value + '">' + label + "</button>";
+      return '<button class="ls-chip" type="button" aria-pressed="false" ' + attr + '="' + value + '">' + label + "</button>";
     }
 
     function rulesText(app) {
@@ -645,13 +647,301 @@
     }
 
     var lastApp = null;
-    var toastTimer = null;
     var wasPlaying = null;
     // 数式（KaTeX）を読み込めたら、表示中の問題を数式で組み直す
     function rerenderQuiz() {
       renderedQuizPrompt = null;
       if (lastApp) {
         api.render(lastApp);
+      }
+    }
+
+    // 再開の知らせ（相手が戻った・練習中に友だちが来た）の文とボタン
+    function renderResume(app) {
+      // 練習中に友だちが来たときは「友だちと最初から対戦」を主役にする
+      var practiceJoin = app.resumePending && app.practiceWhileWaiting;
+      if (app.resumePending) {
+        setText(elements.resumeText, practiceJoin ?
+          "🎉 友だちが参加しました！ 友だちと最初から対戦するか、今の盤面を友だちと続けるか選んでください。" :
+          (app.resumeRequesterName || "相手") + " が戻りました。今の盤面から再開するか、最初からやり直すか選んでください。");
+      } else if (app.spectatorMode) {
+        setText(elements.resumeText, app.spectatorPractice ?
+          "ホストが COM と練習中です。始め方を選ぶまで、今の盤面を見て待っています。" :
+          "相手が COM で継続中です。今の盤面を表示しています。再開方法の選択を待っています。");
+      }
+      setText(elements.resumeContinueButton, practiceJoin ? "今の盤面を友だちと続ける" : "今の盤面から再開");
+      setText(elements.resumeRestartButton, practiceJoin ? "友だちと最初から対戦" : "最初からやり直す");
+      elements.resumeRestartButton.classList.toggle("is-primary", practiceJoin);
+      elements.resumeContinueButton.classList.toggle("is-primary", !practiceJoin);
+      elements.resumeActions.classList.toggle("is-restart-first", practiceJoin);
+    }
+
+    // 対局の準備（対戦相手・色・ルール）と、対局中に盤面の上に出すルール
+    function renderSetup(app, boardSize) {
+      setHidden(elements.hostSetupPanel, !(
+        app.transportMode !== "reconnecting" &&
+        !app.matchConfigured &&
+        !app.game.lastMove &&
+        !app.game.winner &&
+        ((app.role === "host") || isHumanP2PSetup(app))
+      ) && !(app.role === "host" && !!app.game.winner));
+      setHidden(elements.hostSetupOpponentSlot, app.role !== "host" ||
+        (app.opponentMode === "human" &&
+        !!app.roomData &&
+        !!app.roomData.guestUserId &&
+        !app.staleGuest));
+      setPressed(elements.humanOpponentButton, app.opponentMode === "human");
+      setPressed(elements.comOpponentButton, app.opponentMode === "com" && !app.localTwoPlayer);
+      setPressed(elements.localOpponentButton, !!app.localTwoPlayer);
+      setHidden(elements.hostSetupColorSlot, !!app.localTwoPlayer);
+      elements.hostColorSwapButton.classList.toggle("is-black-start", app.desiredHostColor === Game.BLACK);
+      elements.hostColorSwapButton.classList.toggle("is-white-start", app.desiredHostColor === Game.WHITE);
+      elements.hostColorSwapButton.setAttribute("aria-label", app.desiredHostColor === Game.BLACK ?
+        "あなたが黒です。押すと白へ切り替えます。" :
+        "あなたが白です。押すと黒へ切り替えます。");
+      elements.hostColorSwapButton.setAttribute("title", app.desiredHostColor === Game.BLACK ?
+        "あなたが黒です。押すと白へ切り替えます。" :
+        "あなたが白です。押すと黒へ切り替えます。");
+      setText(elements.controlHint, app.localTwoPlayer ?
+        "黒が先手です。1台を交代で使います。" : app.opponentMode === "com" ?
+        "黒が先手です。COM はこの端末だけで動きます。" :
+        (isHumanP2PSetup(app) ?
+          "黒が先手です。色を変えると START 準備は解除されます。" :
+          "黒が先手です。友だちを待つ間、START で COM と練習できます。"));
+
+      // ---- ルール ----
+      var isPostGame = app.role === "host" && !!app.game.winner;
+      var canEditRules = app.role === "host" &&
+        ((!app.matchConfigured && !app.game.lastMove && !app.game.winner) || isPostGame);
+      var isQuiz = app.rules.mode === "quiz";
+      if (isQuiz && app.rules.picks.some(function (pick) { return pick.genre === "math"; })) {
+        // 数学を選んだら、問題が出る前に数式の組版を読み込んでおく
+        window.OthelloTex.load();
+      }
+      setHidden(elements.ruleSetup, !canEditRules);
+      setHidden(elements.quizRuleRows, !isQuiz);
+      setPressed(elements.ruleNormalButton, !isQuiz);
+      setPressed(elements.ruleQuizButton, isQuiz);
+      Array.prototype.forEach.call(elements.answerModeButtons, function (button) {
+        setPressed(button, button.getAttribute("data-answer-mode") === app.rules.answerMode);
+      });
+      setHidden(elements.answerModeNote, app.rules.answerMode !== "input");
+      Array.prototype.forEach.call(elements.lifeChoices.children, function (button) {
+        setPressed(button, Number(button.getAttribute("data-lives")) === app.rules.lives);
+      });
+      Array.prototype.forEach.call(elements.timeChoices.children, function (button) {
+        setPressed(button, Number(button.getAttribute("data-time")) === app.rules.timeLimit);
+      });
+      Array.prototype.forEach.call(elements.sizeChoices.children, function (button) {
+        setPressed(button, Number(button.getAttribute("data-size")) === app.rules.size);
+      });
+      Array.prototype.forEach.call(elements.pickRows.querySelectorAll("[data-pick]"), function (button) {
+        setPressed(button, window.OthelloQuiz.hasPick(app.rules, button.getAttribute("data-pick")));
+      });
+      // 対局後は、ルールの欄だけを出す（色・対戦相手は次の対局の準備で選ぶ）
+      elements.hostSetupPanel.classList.toggle("is-post-game", isPostGame);
+      setHidden(elements.rulePostGameNote, !isPostGame);
+      setText(elements.rulePostGameNote, app.opponentMode === "com" ?
+        "対局が終わりました。ルールを変えると、次の対局の準備に移ります。" :
+        "対局が終わりました。ルールを変えると、相手といっしょに次の対局の準備に移ります。");
+      // ゲストはルールを変えられないので、内容だけ見せる
+      setHidden(elements.ruleSummary, canEditRules);
+      setText(elements.ruleSummary, "ルール：" + rulesText(app) + (app.role === "host" ? "" : "（ホストが決めます）"));
+      // 対局中は盤面の上にルールを小さく出す
+      setHidden(elements.ruleBadge, !(app.matchConfigured || app.game.lastMove) || (!isQuiz && boardSize === Game.BOARD_SIZE));
+      setText(elements.ruleBadge, rulesText(app));
+    }
+
+    // 教養モードの問題のシート
+    function renderQuiz(app) {
+      // ---- 教養モードの問題 ----
+      // 自分の問題を優先。なければ相手が答えている問題を（見る設定なら）見るだけで出す
+      var watching = !app.quizPrompt && !!app.opponentQuiz;
+      var prompt = app.quizPrompt || (watching && app.watchOpponent ? app.opponentQuiz : null);
+      setHidden(elements.quizOverlay, !prompt);
+      elements.quizOverlay.classList.toggle("is-watching", watching);
+      setHidden(elements.quizWatchHead, !watching);
+      setHidden(elements.quizGiveUp, watching);
+      setHidden(elements.quizWatchPill, !(watching && !app.watchOpponent));
+      setText(elements.quizWatchTitle, app.opponentQuiz && app.opponentQuiz.byCom ? "🤖 COM が回答中…" : "👀 相手が回答中…");
+      setText(elements.quizWatchPillText, app.opponentQuiz && app.opponentQuiz.byCom ? "COM が回答中…" : "相手が回答中…");
+      if (prompt && prompt !== renderedQuizPrompt) {
+        renderedQuizPrompt = prompt;
+        setText(elements.quizGenre, (app.localTwoPlayer && prompt.color ? (prompt.color === Game.BLACK ? "⚫ 黒の人・" : "⚪ 白の人・") : "") +
+          prompt.question.pickLabel + (prompt.attempt ? "・このマス" + (prompt.attempt + 1) + "問目" : ""));
+        window.OthelloTex.setText(elements.quizText, prompt.question.text, prompt.question.tex, rerenderQuiz);
+        elements.quizChoices.innerHTML = prompt.question.choices.map(function (choice, index) {
+          return '<button class="quiz-choice" type="button" data-choice="' + index + '"></button>';
+        }).join("");
+        Array.prototype.forEach.call(elements.quizChoices.children, function (button, index) {
+          window.OthelloTex.setChoice(button, prompt.question.choices[index], prompt.question.texChoices);
+        });
+        setText(elements.quizResult, "");
+        // 入力で答える問題は、選択肢の代わりに入力欄を出す
+        setHidden(elements.quizChoices, !!prompt.inputMode);
+        setHidden(elements.quizInputForm, !prompt.inputMode);
+        elements.quizInput.value = "";
+        elements.quizInput.placeholder = watching ? "相手が入力中…" : "答えを入力";
+        elements.quizInput.className = "ls-input quiz-input-field";
+        if (prompt.inputMode && !watching) {
+          window.setTimeout(function () { elements.quizInput.focus(); }, 50);
+        }
+      }
+      if (prompt) {
+        var answered = prompt.chosen !== null;
+        Array.prototype.forEach.call(elements.quizChoices.children, function (button, index) {
+          button.disabled = answered || watching;
+          button.classList.toggle("is-correct", answered && index === prompt.question.answer);
+          button.classList.toggle("is-wrong", answered && index === prompt.chosen && !prompt.correct);
+        });
+        elements.quizGiveUp.disabled = answered;
+        // ライフが残っていれば「わからない」でもライフが減るだけ（相手の番にはならない）
+        var myLivesLeft = (app.quizLives || {})[prompt.color || app.myColor] || 0;
+        setText(elements.quizGiveUp, app.rules.lives && myLivesLeft > 0 ?
+          "わからない（ライフ −1）" : "わからない（相手の番にする）");
+        if (prompt.inputMode) {
+          elements.quizInput.readOnly = answered || watching;
+          elements.quizInputSubmit.disabled = answered || watching;
+          if (answered && watching) {
+            elements.quizInput.value = prompt.typed || "";
+          }
+          elements.quizInput.classList.toggle("is-correct", answered && prompt.correct);
+          elements.quizInput.classList.toggle("is-wrong", answered && !prompt.correct);
+        }
+        // 不正解のとき：ライフが残っていればライフが減ってもう一度、なければ相手の番
+        var answerColor = prompt.color || (watching ? (app.myColor ? Game.getOpponent(app.myColor) : "") : app.myColor);
+        var livesLeft = (app.quizLives || {})[answerColor] || 0;
+        var canRetry = !!app.rules.lives && livesLeft > 0;
+        var missWord = (prompt.chosen === -2 ? "⏰ 時間切れ" : (prompt.chosen === -1 ? "🤷 わからない" : "❌ 不正解")) +
+          // 入力のときは正解の選択肢が見えないので、答えを書いて見せる
+          (prompt.inputMode ? "（正解は「" + prompt.question.choices[prompt.question.answer] + "」）" : "");
+        var who = prompt.byCom ? "COM" : "相手";
+        var resultText = !answered ? "" : prompt.correct ?
+          (watching ? "⭕ 正解… " + who + "が石を置きます" : "⭕ 正解！ 石を置きます") :
+          missWord + (canRetry ?
+            "… " + (watching ? who + "の" : "") + "ライフ −1（のこり " + (livesLeft - 1) + "）" + (watching ? "" : "。もう一度選べます") :
+            (watching ? "… あなたの番です" : (app.localTwoPlayer ? "… 交代です" : "… 相手の番です")));
+        setText(elements.quizResult, resultText);
+        elements.quizResult.className = "quiz-result" + (answered ? (prompt.correct ? " is-correct" : " is-wrong") : "");
+      } else {
+        renderedQuizPrompt = null;
+      }
+      updateCountdown(prompt);
+    }
+
+    // START（盤面の上と、準備の欄の一番下）
+    function renderStart(app) {
+      var showStart = shouldShowStartOverlay(app);
+      // 準備の欄が出ているときは、その一番下にも START を出す（盤面までスクロールしなくてよい）。
+      // 盤面の上の START も同じように押せる（どちらも同じ表示・同じ動き）
+      var startInSetup = showStart && !elements.hostSetupPanel.classList.contains("hidden");
+      setHidden(elements.startOverlay, !showStart);
+      setHidden(elements.startButton, !showStart);
+      setHidden(elements.setupStartButton, !startInSetup);
+      if (showStart) {
+        var rulesReady = window.OthelloQuiz.isReady(app.rules);
+        var startLabel = !rulesReady ? (app.role === "host" ? "問題を選ぶと START できます" : "ホストが問題を選んでいます") :
+          (app.opponentMode === "human" && app.localStartReady ? "準備OK・相手を待っています" : "▶ START");
+        var startDisabled = !rulesReady || (app.opponentMode === "com" ? app.role !== "host" : !!app.localStartReady);
+        var waiting = isHostWaiting(app);
+        // 友だち待ちのあいだは「待っています」と点のアニメーションを出す
+        if (waiting) {
+          // 毎回書き直すとアニメーションが最初に戻るので、まだ出していないときだけ入れる
+          if (!elements.startWord.querySelector(".waiting-dots")) elements.startWord.innerHTML = '友だちを待っています<span class="waiting-dots" aria-hidden="true"><i></i><i></i><i></i></span>';
+        } else {
+          setText(elements.startWord, "START");
+        }
+        elements.startWord.classList.toggle("is-waiting", waiting);
+        if (waiting) {
+          startLabel = !rulesReady ? startLabel : "▶ 待つ間 COM と練習する";
+          startDisabled = !rulesReady;
+        }
+        setText(elements.startCaption, getStartCaption(app));
+        setText(elements.startButton, startLabel);
+        setText(elements.setupStartButton, startLabel);
+        elements.startButton.disabled = startDisabled;
+        elements.setupStartButton.disabled = startDisabled;
+      }
+    }
+
+    // 対局の結果
+    function renderResult(app, outcome, counts) {
+      setHidden(elements.resultOverlay, !app.game.winner || app.resultOverlayDismissed);
+      elements.resultOverlay.classList.toggle("visible", !!app.game.winner && !app.resultOverlayDismissed);
+      elements.resultOverlay.classList.toggle("result-win", outcome === "win");
+      elements.resultOverlay.classList.toggle("result-draw", outcome === "draw");
+      elements.resultOverlay.classList.toggle("result-lose", outcome === "lose");
+      if (app.localTwoPlayer && app.game.winner) {
+        // 1台で2人は勝った色を出す（どちらも「WIN」側の色で見せる）
+        elements.resultOverlay.classList.toggle("result-win", outcome !== "draw");
+        elements.resultOverlay.classList.toggle("result-lose", false);
+      }
+      // game.winner は「黒」「白」「引き分け」
+      setText(elements.resultWord, app.localTwoPlayer && app.game.winner && outcome !== "draw" ?
+        app.game.winner + "の勝ち" :
+        (outcome === "draw" ? "DRAW" : (outcome === "win" ? "WIN" : "LOSE")));
+      setText(elements.resultCaption, getResultCaption(app));
+      var resultLives = app.rules.mode === "quiz" && app.rules.lives && counts.black === counts.white ?
+        "（ライフ " + ((app.quizLives || {})[app.myColor === Game.WHITE ? Game.WHITE : Game.BLACK] || 0) + " - " +
+        ((app.quizLives || {})[app.myColor === Game.WHITE ? Game.BLACK : Game.WHITE] || 0) + "）" : "";
+      setText(elements.resultScoreline, String(app.myColor === Game.BLACK ? counts.black : counts.white) + " - " +
+        String(app.myColor === Game.BLACK ? counts.white : counts.black) + resultLives);
+      setText(elements.resultPrimaryButton, app.rematch.outgoing ? "送信中" : "はい");
+      setText(elements.resultSecondaryButton, app.rematch.outgoing ? "閉じる" : "いいえ");
+      elements.resultPrimaryButton.disabled = !!app.rematch.outgoing;
+    }
+
+    // 盤面のマス（置ける印・教養モードの1文字・石）
+    function renderCells(app, boardSize, isMyTurn) {
+      var buttons = elements.board.querySelectorAll(".cell");
+      var validMap = Game.getMoveMap(Game.getValidMoves(app.game.board, app.game.currentTurn));
+      var index;
+      var button;
+      var row;
+      var col;
+      var key;
+      var cellValue;
+      var canPlay;
+      for (index = 0; index < buttons.length; index += 1) {
+        button = buttons[index];
+        row = Number(button.getAttribute("data-row"));
+        col = Number(button.getAttribute("data-col"));
+        key = row + "-" + col;
+        cellValue = app.game.board[row][col];
+        canPlay = false;
+
+        if (!cellValue && !app.game.winner && !!validMap[key]) {
+          button.className = isMyTurn ? "cell valid" : "cell opponent-valid";
+        } else {
+          button.className = "cell";
+        }
+
+        canPlay = !!app.myColor &&
+          !app.spectatorMode &&
+          !app.resumePending &&
+          isMyTurn &&
+          !app.game.winner &&
+          !!validMap[key];
+
+        button.disabled = !canPlay;
+        button.innerHTML = "";
+
+        // 教養モードの対局中は、空いているマスにそのマスの問題の1文字を出す
+        if (!cellValue && app.rules.mode === "quiz" && app.matchConfigured) {
+          var mark = documentRef.createElement("span");
+          mark.className = "cell-mark";
+          // 4隅は取り合いになる大事なマスなので、問題の手がかりを出さず「？」にする
+          var isCorner = (row === 0 || row === boardSize - 1) && (col === 0 || col === boardSize - 1);
+          mark.textContent = isCorner ? "？" :
+            (window.OthelloQuiz.questionAt(app.rules, app.quizAttempts, app.quizRetries, row, col).mark || "");
+          button.appendChild(mark);
+        }
+
+        if (cellValue) {
+          button.className = "cell";
+          button.disabled = true;
+          button.innerHTML = '<span class="disc ' + (cellValue === Game.BLACK ? "black" : "white") + '"></span>';
+        }
       }
     }
 
@@ -665,7 +955,7 @@
         }).join("");
         elements.pickRows.innerHTML = window.OthelloQuiz.GENRES.map(function (genre) {
           return '<div class="pick-row"><span class="pick-genre">' + genre.icon + " " + genre.label + "</span>" +
-            '<div class="control-actions rule-wrap">' +
+            '<div class="ls-chips">' +
             genre.levels.map(function (level) { return chip(level.label, genre.id + ":" + level.id, "data-pick"); }).join("") +
             "</div></div>";
         }).join("");
@@ -741,17 +1031,11 @@
         window.addEventListener("resize", handlers.onResize);
       },
 
+      // 友だちの参加などのお知らせ（Q キットのトースト。数秒で消える）
       showToast: function (text) {
-        setText(elements.toast, text);
-        setHidden(elements.toast, false);
-        elements.toast.classList.remove("is-showing");
-        void elements.toast.offsetWidth;
-        elements.toast.classList.add("is-showing");
-        window.clearTimeout(toastTimer);
-        toastTimer = window.setTimeout(function () {
-          setHidden(elements.toast, true);
-          elements.toast.classList.remove("is-showing");
-        }, 4500);
+        if (window.LineShareUI) {
+          window.LineShareUI.toast(text, { ms: 4500 });
+        }
       },
 
       getRoomInput: function () {
@@ -778,19 +1062,9 @@
         if (elements.board.querySelectorAll(".cell").length !== boardSize * boardSize) {
           createBoardElements(elements.board, boardClickHandler, boardSize);
         }
-        var buttons = elements.board.querySelectorAll(".cell");
         elements.board.classList.toggle("is-quiz", app.rules.mode === "quiz" && app.matchConfigured);
         elements.board.classList.toggle("is-waiting", isHostWaiting(app));
-        var validMoves = Game.getValidMoves(app.game.board, app.game.currentTurn);
-        var validMap = Game.getMoveMap(validMoves);
         var counts = Game.countDiscs(app.game.board);
-        var row;
-        var col;
-        var index;
-        var button;
-        var key;
-        var cellValue;
-        var canPlay;
         var myCardColor = "";
         var opponentCardColor = "";
         var currentTurn = app.game.currentTurn;
@@ -877,267 +1151,12 @@
 
         setHidden(elements.resumeNotice, !(app.resumePending || app.spectatorMode));
         setHidden(elements.resumeActions, !app.resumePending);
-        // 練習中に友だちが来たときは「友だちと最初から対戦」を主役にする
-        var practiceJoin = app.resumePending && app.practiceWhileWaiting;
-        if (app.resumePending) {
-          setText(elements.resumeText, practiceJoin ?
-            "🎉 友だちが参加しました！ 友だちと最初から対戦するか、今の盤面を友だちと続けるか選んでください。" :
-            (app.resumeRequesterName || "相手") + " が戻りました。今の盤面から再開するか、最初からやり直すか選んでください。");
-        } else if (app.spectatorMode) {
-          setText(elements.resumeText, app.spectatorPractice ?
-            "ホストが COM と練習中です。始め方を選ぶまで、今の盤面を見て待っています。" :
-            "相手が COM で継続中です。今の盤面を表示しています。再開方法の選択を待っています。");
-        }
-        setText(elements.resumeContinueButton, practiceJoin ? "今の盤面を友だちと続ける" : "今の盤面から再開");
-        setText(elements.resumeRestartButton, practiceJoin ? "友だちと最初から対戦" : "最初からやり直す");
-        elements.resumeRestartButton.className = practiceJoin ? "button-primary" : "button-secondary";
-        elements.resumeContinueButton.className = practiceJoin ? "button-secondary" : "button-primary";
-        elements.resumeActions.classList.toggle("is-restart-first", practiceJoin);
-
-        setHidden(elements.hostSetupPanel, !(
-          app.transportMode !== "reconnecting" &&
-          !app.matchConfigured &&
-          !app.game.lastMove &&
-          !app.game.winner &&
-          ((app.role === "host") || isHumanP2PSetup(app))
-        ) && !(app.role === "host" && !!app.game.winner));
-        setHidden(elements.hostSetupOpponentSlot, app.role !== "host" ||
-          (app.opponentMode === "human" &&
-          !!app.roomData &&
-          !!app.roomData.guestUserId &&
-          !app.staleGuest));
-        elements.humanOpponentButton.classList.toggle("active", app.opponentMode === "human");
-        elements.comOpponentButton.classList.toggle("active", app.opponentMode === "com" && !app.localTwoPlayer);
-        elements.localOpponentButton.classList.toggle("active", !!app.localTwoPlayer);
-        setHidden(elements.hostSetupColorSlot, !!app.localTwoPlayer);
-        elements.hostColorSwapButton.classList.toggle("is-black-start", app.desiredHostColor === Game.BLACK);
-        elements.hostColorSwapButton.classList.toggle("is-white-start", app.desiredHostColor === Game.WHITE);
-        elements.hostColorSwapButton.setAttribute("aria-label", app.desiredHostColor === Game.BLACK ?
-          "あなたが黒です。押すと白へ切り替えます。" :
-          "あなたが白です。押すと黒へ切り替えます。");
-        elements.hostColorSwapButton.setAttribute("title", app.desiredHostColor === Game.BLACK ?
-          "あなたが黒です。押すと白へ切り替えます。" :
-          "あなたが白です。押すと黒へ切り替えます。");
-        setText(elements.controlHint, app.localTwoPlayer ?
-          "黒が先手です。1台を交代で使います。" : app.opponentMode === "com" ?
-          "黒が先手です。COM はこの端末だけで動きます。" :
-          (isHumanP2PSetup(app) ?
-            "黒が先手です。色を変えると START 準備は解除されます。" :
-            "黒が先手です。友だちを待つ間、START で COM と練習できます。"));
-
-        // ---- ルール ----
-        var isPostGame = app.role === "host" && !!app.game.winner;
-        var canEditRules = app.role === "host" &&
-          ((!app.matchConfigured && !app.game.lastMove && !app.game.winner) || isPostGame);
-        var isQuiz = app.rules.mode === "quiz";
-        if (isQuiz && app.rules.picks.some(function (pick) { return pick.genre === "math"; })) {
-          // 数学を選んだら、問題が出る前に数式の組版を読み込んでおく
-          window.OthelloTex.load();
-        }
-        setHidden(elements.ruleSetup, !canEditRules);
-        setHidden(elements.quizRuleRows, !isQuiz);
-        elements.ruleNormalButton.classList.toggle("active", !isQuiz);
-        elements.ruleQuizButton.classList.toggle("active", isQuiz);
-        Array.prototype.forEach.call(elements.answerModeButtons, function (button) {
-          button.classList.toggle("active", button.getAttribute("data-answer-mode") === app.rules.answerMode);
-        });
-        setHidden(elements.answerModeNote, app.rules.answerMode !== "input");
-        Array.prototype.forEach.call(elements.lifeChoices.children, function (button) {
-          button.classList.toggle("active", Number(button.getAttribute("data-lives")) === app.rules.lives);
-        });
-        Array.prototype.forEach.call(elements.timeChoices.children, function (button) {
-          button.classList.toggle("active", Number(button.getAttribute("data-time")) === app.rules.timeLimit);
-        });
-        Array.prototype.forEach.call(elements.sizeChoices.children, function (button) {
-          button.classList.toggle("active", Number(button.getAttribute("data-size")) === app.rules.size);
-        });
-        Array.prototype.forEach.call(elements.pickRows.querySelectorAll("[data-pick]"), function (button) {
-          button.classList.toggle("active", window.OthelloQuiz.hasPick(app.rules, button.getAttribute("data-pick")));
-        });
-        // 対局後は、ルールの欄だけを出す（色・対戦相手は次の対局の準備で選ぶ）
-        elements.hostSetupPanel.classList.toggle("is-post-game", isPostGame);
-        setHidden(elements.rulePostGameNote, !isPostGame);
-        setText(elements.rulePostGameNote, app.opponentMode === "com" ?
-          "対局が終わりました。ルールを変えると、次の対局の準備に移ります。" :
-          "対局が終わりました。ルールを変えると、相手といっしょに次の対局の準備に移ります。");
-        // ゲストはルールを変えられないので、内容だけ見せる
-        setHidden(elements.ruleSummary, canEditRules);
-        setText(elements.ruleSummary, "ルール：" + rulesText(app) + (app.role === "host" ? "" : "（ホストが決めます）"));
-        // 対局中は盤面の上にルールを小さく出す
-        setHidden(elements.ruleBadge, !(app.matchConfigured || app.game.lastMove) || (!isQuiz && boardSize === Game.BOARD_SIZE));
-        setText(elements.ruleBadge, rulesText(app));
-
-        // ---- 教養モードの問題 ----
-        // 自分の問題を優先。なければ相手が答えている問題を（見る設定なら）見るだけで出す
-        var watching = !app.quizPrompt && !!app.opponentQuiz;
-        var prompt = app.quizPrompt || (watching && app.watchOpponent ? app.opponentQuiz : null);
-        setHidden(elements.quizOverlay, !prompt);
-        elements.quizOverlay.classList.toggle("is-watching", watching);
-        setHidden(elements.quizWatchHead, !watching);
-        setHidden(elements.quizGiveUp, watching);
-        setHidden(elements.quizWatchPill, !(watching && !app.watchOpponent));
-        setText(elements.quizWatchTitle, app.opponentQuiz && app.opponentQuiz.byCom ? "🤖 COM が回答中…" : "👀 相手が回答中…");
-        setText(elements.quizWatchPillText, app.opponentQuiz && app.opponentQuiz.byCom ? "COM が回答中…" : "相手が回答中…");
-        if (prompt && prompt !== renderedQuizPrompt) {
-          renderedQuizPrompt = prompt;
-          setText(elements.quizGenre, (app.localTwoPlayer && prompt.color ? (prompt.color === Game.BLACK ? "⚫ 黒の人・" : "⚪ 白の人・") : "") +
-            prompt.question.pickLabel + (prompt.attempt ? "・このマス" + (prompt.attempt + 1) + "問目" : ""));
-          window.OthelloTex.setText(elements.quizText, prompt.question.text, prompt.question.tex, rerenderQuiz);
-          elements.quizChoices.innerHTML = prompt.question.choices.map(function (choice, index) {
-            return '<button class="quiz-choice" type="button" data-choice="' + index + '"></button>';
-          }).join("");
-          Array.prototype.forEach.call(elements.quizChoices.children, function (button, index) {
-            window.OthelloTex.setChoice(button, prompt.question.choices[index], prompt.question.texChoices);
-          });
-          setText(elements.quizResult, "");
-          // 入力で答える問題は、選択肢の代わりに入力欄を出す
-          setHidden(elements.quizChoices, !!prompt.inputMode);
-          setHidden(elements.quizInputForm, !prompt.inputMode);
-          elements.quizInput.value = "";
-          elements.quizInput.placeholder = watching ? "相手が入力中…" : "答えを入力";
-          elements.quizInput.className = "quiz-input-field";
-          if (prompt.inputMode && !watching) {
-            window.setTimeout(function () { elements.quizInput.focus(); }, 50);
-          }
-        }
-        if (prompt) {
-          var answered = prompt.chosen !== null;
-          Array.prototype.forEach.call(elements.quizChoices.children, function (button, index) {
-            button.disabled = answered || watching;
-            button.classList.toggle("is-correct", answered && index === prompt.question.answer);
-            button.classList.toggle("is-wrong", answered && index === prompt.chosen && !prompt.correct);
-          });
-          elements.quizGiveUp.disabled = answered;
-          // ライフが残っていれば「わからない」でもライフが減るだけ（相手の番にはならない）
-          var myLivesLeft = (app.quizLives || {})[prompt.color || app.myColor] || 0;
-          setText(elements.quizGiveUp, app.rules.lives && myLivesLeft > 0 ?
-            "わからない（ライフ −1）" : "わからない（相手の番にする）");
-          if (prompt.inputMode) {
-            elements.quizInput.readOnly = answered || watching;
-            elements.quizInputSubmit.disabled = answered || watching;
-            if (answered && watching) {
-              elements.quizInput.value = prompt.typed || "";
-            }
-            elements.quizInput.classList.toggle("is-correct", answered && prompt.correct);
-            elements.quizInput.classList.toggle("is-wrong", answered && !prompt.correct);
-          }
-          // 不正解のとき：ライフが残っていればライフが減ってもう一度、なければ相手の番
-          var answerColor = prompt.color || (watching ? (app.myColor ? Game.getOpponent(app.myColor) : "") : app.myColor);
-          var livesLeft = (app.quizLives || {})[answerColor] || 0;
-          var canRetry = !!app.rules.lives && livesLeft > 0;
-          var missWord = (prompt.chosen === -2 ? "⏰ 時間切れ" : (prompt.chosen === -1 ? "🤷 わからない" : "❌ 不正解")) +
-            // 入力のときは正解の選択肢が見えないので、答えを書いて見せる
-            (prompt.inputMode ? "（正解は「" + prompt.question.choices[prompt.question.answer] + "」）" : "");
-          var who = prompt.byCom ? "COM" : "相手";
-          var resultText = !answered ? "" : prompt.correct ?
-            (watching ? "⭕ 正解… " + who + "が石を置きます" : "⭕ 正解！ 石を置きます") :
-            missWord + (canRetry ?
-              "… " + (watching ? who + "の" : "") + "ライフ −1（のこり " + (livesLeft - 1) + "）" + (watching ? "" : "。もう一度選べます") :
-              (watching ? "… あなたの番です" : (app.localTwoPlayer ? "… 交代です" : "… 相手の番です")));
-          setText(elements.quizResult, resultText);
-          elements.quizResult.className = "quiz-result" + (answered ? (prompt.correct ? " is-correct" : " is-wrong") : "");
-        } else {
-          renderedQuizPrompt = null;
-        }
-        updateCountdown(prompt);
-
-        var showStart = shouldShowStartOverlay(app);
-        // 準備の欄が出ているときは、その一番下にも START を出す（盤面までスクロールしなくてよい）。
-        // 盤面の上の START も同じように押せる（どちらも同じ表示・同じ動き）
-        var startInSetup = showStart && !elements.hostSetupPanel.classList.contains("hidden");
-        setHidden(elements.startOverlay, !showStart);
-        setHidden(elements.startButton, !showStart);
-        setHidden(elements.setupStartButton, !startInSetup);
-        if (showStart) {
-          var rulesReady = window.OthelloQuiz.isReady(app.rules);
-          var startLabel = !rulesReady ? (app.role === "host" ? "問題を選ぶと START できます" : "ホストが問題を選んでいます") :
-            (app.opponentMode === "human" && app.localStartReady ? "準備OK・相手を待っています" : "▶ START");
-          var startDisabled = !rulesReady || (app.opponentMode === "com" ? app.role !== "host" : !!app.localStartReady);
-          var waiting = isHostWaiting(app);
-          // 友だち待ちのあいだは「待っています」と点のアニメーションを出す
-          if (waiting) {
-            // 毎回書き直すとアニメーションが最初に戻るので、まだ出していないときだけ入れる
-            if (!elements.startWord.querySelector(".waiting-dots")) elements.startWord.innerHTML = '友だちを待っています<span class="waiting-dots" aria-hidden="true"><i></i><i></i><i></i></span>';
-          } else {
-            setText(elements.startWord, "START");
-          }
-          elements.startWord.classList.toggle("is-waiting", waiting);
-          if (waiting) {
-            startLabel = !rulesReady ? startLabel : "▶ 待つ間 COM と練習する";
-            startDisabled = !rulesReady;
-          }
-          setText(elements.startCaption, getStartCaption(app));
-          setText(elements.startButton, startLabel);
-          setText(elements.setupStartButton, startLabel);
-          elements.startButton.disabled = startDisabled;
-          elements.setupStartButton.disabled = startDisabled;
-        }
-
-        setHidden(elements.resultOverlay, !app.game.winner || app.resultOverlayDismissed);
-        elements.resultOverlay.classList.toggle("visible", !!app.game.winner && !app.resultOverlayDismissed);
-        elements.resultOverlay.classList.toggle("result-win", outcome === "win");
-        elements.resultOverlay.classList.toggle("result-draw", outcome === "draw");
-        elements.resultOverlay.classList.toggle("result-lose", outcome === "lose");
-        if (app.localTwoPlayer && app.game.winner) {
-          // 1台で2人は勝った色を出す（どちらも「WIN」側の色で見せる）
-          elements.resultOverlay.classList.toggle("result-win", outcome !== "draw");
-          elements.resultOverlay.classList.toggle("result-lose", false);
-        }
-        // game.winner は「黒」「白」「引き分け」
-        setText(elements.resultWord, app.localTwoPlayer && app.game.winner && outcome !== "draw" ?
-          app.game.winner + "の勝ち" :
-          (outcome === "draw" ? "DRAW" : (outcome === "win" ? "WIN" : "LOSE")));
-        setText(elements.resultCaption, getResultCaption(app));
-        var resultLives = app.rules.mode === "quiz" && app.rules.lives && counts.black === counts.white ?
-          "（ライフ " + ((app.quizLives || {})[app.myColor === Game.WHITE ? Game.WHITE : Game.BLACK] || 0) + " - " +
-          ((app.quizLives || {})[app.myColor === Game.WHITE ? Game.BLACK : Game.WHITE] || 0) + "）" : "";
-        setText(elements.resultScoreline, String(app.myColor === Game.BLACK ? counts.black : counts.white) + " - " +
-          String(app.myColor === Game.BLACK ? counts.white : counts.black) + resultLives);
-        setText(elements.resultPrimaryButton, app.rematch.outgoing ? "送信中" : "はい");
-        setText(elements.resultSecondaryButton, app.rematch.outgoing ? "閉じる" : "いいえ");
-        elements.resultPrimaryButton.disabled = !!app.rematch.outgoing;
-
-        for (index = 0; index < buttons.length; index += 1) {
-          button = buttons[index];
-          row = Number(button.getAttribute("data-row"));
-          col = Number(button.getAttribute("data-col"));
-          key = row + "-" + col;
-          cellValue = app.game.board[row][col];
-          canPlay = false;
-
-          if (!cellValue && !app.game.winner && !!validMap[key]) {
-            button.className = isMyTurn ? "cell valid" : "cell opponent-valid";
-          } else {
-            button.className = "cell";
-          }
-
-          canPlay = !!app.myColor &&
-            !app.spectatorMode &&
-            !app.resumePending &&
-            isMyTurn &&
-            !app.game.winner &&
-            !!validMap[key];
-
-          button.disabled = !canPlay;
-          button.innerHTML = "";
-
-          // 教養モードの対局中は、空いているマスにそのマスの問題の1文字を出す
-          if (!cellValue && app.rules.mode === "quiz" && app.matchConfigured) {
-            var mark = documentRef.createElement("span");
-            mark.className = "cell-mark";
-            // 4隅は取り合いになる大事なマスなので、問題の手がかりを出さず「？」にする
-            var isCorner = (row === 0 || row === boardSize - 1) && (col === 0 || col === boardSize - 1);
-            mark.textContent = isCorner ? "？" :
-              (window.OthelloQuiz.questionAt(app.rules, app.quizAttempts, app.quizRetries, row, col).mark || "");
-            button.appendChild(mark);
-          }
-
-          if (cellValue) {
-            button.className = "cell";
-            button.disabled = true;
-            button.innerHTML = '<span class="disc ' + (cellValue === Game.BLACK ? "black" : "white") + '"></span>';
-          }
-        }
+        renderResume(app);
+        renderSetup(app, boardSize);
+        renderQuiz(app);
+        renderStart(app);
+        renderResult(app, outcome, counts);
+        renderCells(app, boardSize, isMyTurn);
       }
     };
     return api;

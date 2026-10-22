@@ -311,16 +311,16 @@
   function showOutsideChoice() {
     var appUrl = "https://liff.line.me/" + window.APP_CONFIG.liffId + window.location.search;
     var box = document.createElement("div");
-    box.className = "outside-choice";
+    box.className = "ls-sheet outside-choice";
     box.setAttribute("role", "dialog");
     box.setAttribute("aria-modal", "true");
     box.innerHTML =
-      '<div class="outside-choice-card">' +
+      '<div class="ls-sheet-card outside-choice-card">' +
       '<img src="' + getAssetUrl("assets/icon.svg") + '" alt="" width="56" height="56">' +
-      '<p class="outside-choice-title">LINE の外で開いています</p>' +
-      '<p class="outside-choice-text">ひっくりは LINE の友だちと対戦します。どちらかから始めてください。</p>' +
-      '<a class="outside-choice-button is-app" href="' + appUrl + '">💬 LINE アプリで開く</a>' +
-      '<button class="outside-choice-button" type="button">🔑 このブラウザで LINE にログイン</button>' +
+      '<p class="ls-sheet-title">LINE の外で開いています</p>' +
+      '<p class="ls-hint outside-choice-text">ひっくりは LINE の友だちと対戦します。どちらかから始めてください。</p>' +
+      '<a class="ls-outside-button is-app outside-choice-button" href="' + appUrl + '">💬 LINE アプリで開く</a>' +
+      '<button class="ls-outside-button outside-choice-button" type="button">🔑 このブラウザで LINE にログイン</button>' +
       "</div>";
     box.querySelector("button").addEventListener("click", function () {
       liff.login({ redirectUri: loginReturnUrl() });

@@ -115,7 +115,7 @@ LIFF、Firebase Firestore、PeerJS を使った 2 人対戦オセロです。
 - `js/play.js`
   - 対局進行、P2P、再接続、COM
 - `js/ui.js`
-  - DOM 更新
+  - DOM 更新（`render` が、ルーム・準備・問題・START・結果・盤面の順に描く）
 - `js/game.js`
   - オセロの純粋ロジック（盤面の大きさは配列の長さで決まる）
 - `js/quiz.js`
@@ -135,10 +135,14 @@ LIFF、Firebase Firestore、PeerJS を使った 2 人対戦オセロです。
 
 ## CSS の責務
 
+部品（見出しの行・カード・チップ・入力欄・ボタン・開閉・問題などのシート・トースト）は、おくるんの Q キット（`https://katsuan.github.io/line-share/shared/ui.css`・`ui.js`。使い方はおくるんの README の「Q キット」）を使います。ひっくりの CSS には、ひっくりの色と字（`:root` の `--ls-accent` など。緑 #1F7A45・濃い緑 #14542E）と、ひっくりにしかない見た目だけを置きます。
+
 - `css/styles.css`
-  - 全体レイアウト、トップバー、共通ボタン
+  - ひっくりの色と字、全体レイアウト、トップバー（ルームの状態・始め方の3択）、LINE の外で開いたときの画面
 - `css/board.css`
-  - 盤面、プレイヤーカード、開始前 UI、結果オーバーレイ
+  - 盤面・石、プレイヤーカード、対局の準備、教養モードの問題、START・結果の画面
+
+公開する前に、読み込むファイルの版（`?v=`）を `python3 ../q-oqrn/tools/qstamp.py index.html` で付け直します。
 
 ## 設定箇所
 

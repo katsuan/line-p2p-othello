@@ -8,7 +8,6 @@
     { id: "h", label: "高校", type: "math" }, { id: "u", label: "大学（微積）", type: "math" }
   ] };
   var GENRES = [MATH_GENRE];
-  var loaded = false;
 
   function findGenre(genreId) {
     var index;
@@ -133,7 +132,6 @@
     var list = genres.concat([MATH_GENRE]);
     list.sort(function (a, b) { return (a.order - b.order) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0); });
     GENRES.splice.apply(GENRES, [0, GENRES.length].concat(list));
-    loaded = true;
     poolCache = {};
     markCache = {};
   }
@@ -754,7 +752,6 @@
     currentPosition: currentPosition,
     questionAt: questionAt,
     nextRetryPosition: nextRetryPosition,
-    isLoaded: function () { return loaded; },
     findGenre: findGenre,
     normalizeRules: normalizeRules,
     describe: describe,

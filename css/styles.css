@@ -1,34 +1,32 @@
+/* ひっくりの色と字（Q キットの変数）。部品の見た目は Q キット（line-share/shared/ui.css）にそろえ、ここにはひっくりにしかないものだけ置く */
 :root {
-  --bg: #f4efe2;
-  --panel: #fffaf0;
-  --text: #1d2a22;
-  --muted: #576459;
-  --accent: #1f7a45; /* ロゴ・アイコンの盤の緑にそろえる（もとはオレンジ #d66d2f） */
-  --shadow: 0 16px 40px rgba(23, 34, 27, 0.12);
+  --ls-accent: #1f7a45; /* ロゴ・アイコンの盤の緑 */
+  --ls-accent-strong: #14542e;
+  --ls-accent-soft: #e4f1e8;
+  --ls-accent-ink: #14542e; /* ひっくりの色（コネクトの一覧と同じ） */
+  --ls-font: "Avenir Next", "Helvetica Neue", sans-serif;
+  --ls-bg: #f4efe2;
+  --ls-text: #1d2a22;
+  --ls-subtext: #576459;
+  --ls-line: rgba(29, 42, 34, 0.1);
 }
 
-* {
-  box-sizing: border-box;
-}
-
-/* iPhone・LINE の中のブラウザで、キーボードが出て画面がずれたとき、ページの外（黒）が見えないよう、ページそのものにも背景の色 */
-html { background-color: var(--bg); }
 body {
-  margin: 0;
   min-height: 100vh;
   padding: 24px 16px 48px;
-  color: var(--text);
-  font-family: "Avenir Next", "Helvetica Neue", sans-serif;
   background:
     radial-gradient(circle at top left, rgba(31, 122, 69, 0.16), transparent 28%),
     radial-gradient(circle at bottom right, rgba(18, 107, 58, 0.16), transparent 24%),
-    linear-gradient(180deg, #fbf7ef 0%, var(--bg) 100%);
+    linear-gradient(180deg, #fbf7ef 0%, var(--ls-bg) 100%);
 }
 
-body.boot-loading .top-actions,
-body.boot-loading .board-layout {
-  opacity: 0;
-  pointer-events: none;
+.hidden {
+  display: none !important;
+}
+
+/* 入力欄を押したときの縁（Q キットは紫で決まっているので、ひっくりの緑に） */
+.ls-input:focus {
+  box-shadow: 0 0 0 3px rgba(31, 122, 69, 0.2);
 }
 
 /* 起動中（LINE ログイン・ルーム確認）は「準備しています…」だけを出す */
@@ -49,16 +47,20 @@ body.boot-loading .boot-note {
   z-index: 5;
 }
 
-/* ルームを選ぶ前は盤面を出さない（押せそうに見えて迷うため）。始め方の3択だけに集中させる */
-body.is-lobby .board-shell {
-  display: none;
-}
-
-body.boot-loading .top-actions,
-body.boot-loading .board-layout,
 .top-actions,
 .board-layout {
   transition: opacity 160ms ease;
+}
+
+body.boot-loading .top-actions,
+body.boot-loading .board-layout {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ルームを選ぶ前は盤面を出さない（押せそうに見えて迷うため）。始め方の3択だけに集中させる */
+body.is-lobby .board-shell {
+  display: none;
 }
 
 .app {
@@ -66,33 +68,20 @@ body.boot-loading .board-layout,
   margin: 0 auto;
 }
 
-.panel {
-  background: rgba(255, 250, 240, 0.97);
-  border: 1px solid rgba(29, 42, 34, 0.08);
-  border-radius: 22px;
-  box-shadow: var(--shadow);
-  }
-
 .topbar {
-  display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 18px;
   align-items: center;
   padding: 22px 24px;
 }
 
-.title-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+/* 見出しの行：名前（左）、ロゴと版（右） */
+.ls-brand-logo {
+  margin-left: auto;
 }
 
-h1 {
-  margin: 0 0 10px;
-  font-size: clamp(1.8rem, 3vw, 2.6rem);
-  line-height: 1;
-  letter-spacing: -0.04em;
+.ls-brand-copy {
+  margin-top: 4px;
 }
 
 .version-badge {
@@ -107,48 +96,11 @@ h1 {
   letter-spacing: 0.08em;
 }
 
-.title-row h1 {
-  margin: 0;
-}
-
-/* 名前（アイコン＋ひっくり）と横長のロゴ（HiQRi） */
-.brand-name {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.brand-icon {
-  width: 1.1em;
-  height: 1.1em;
-}
-
-.brand-logo {
-  display: block;
-  width: auto;
-  height: 28px;
-  margin-left: auto; /* ほかのツールと同じく、ロゴは見出しの行の右に寄せる */
-}
-
-.subtitle {
-  margin: 0;
-  max-width: 32rem;
-  color: var(--muted);
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
 .top-actions {
   display: grid;
   gap: 12px;
   min-width: 260px;
   min-height: 212px;
-}
-
-.field-label {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 700;
 }
 
 .room-overview {
@@ -168,7 +120,7 @@ h1 {
   padding: 3px 9px;
   border-radius: 999px;
   background: rgba(29, 42, 34, 0.07);
-  color: var(--muted);
+  color: var(--ls-subtext);
   font-size: 0.72rem;
   font-weight: 800;
   white-space: nowrap;
@@ -181,12 +133,11 @@ h1 {
 }
 
 .room-state-hint {
-  color: var(--muted);
+  color: var(--ls-subtext);
   font-size: 0.87rem;
   line-height: 1.5;
 }
 
-.room-current-row,
 .link-row,
 .button-row,
 .room-tools-actions {
@@ -196,19 +147,14 @@ h1 {
   flex-wrap: wrap;
 }
 
+/* ルームIDとコピーは1行に（スマホで縦に場所を取らない） */
 .room-current-row {
   display: flex;
-  flex-wrap: nowrap;
+  gap: 8px;
+  align-items: center;
 }
 
-.room-current-row .room-current-id {
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.room-current-row .button-compact {
+.room-current-row .ls-button {
   flex: 0 0 auto;
 }
 
@@ -218,231 +164,44 @@ h1 {
   gap: 8px;
 }
 
-.button-row {
-  justify-content: flex-start;
-}
-
 .room-action-row {
   min-height: 46px;
 }
 
-.room-action-note {
-  display: inline-flex;
-  align-items: center;
-  min-height: 42px;
-  padding: 0 14px;
-  border-radius: 999px;
-  background: rgba(29, 42, 34, 0.06);
-  color: var(--muted);
-  font-size: 0.84rem;
-  font-weight: 700;
-}
-
+.room-action-note,
 .room-current-id {
   display: inline-flex;
   align-items: center;
-  width: 100%;
-  min-width: 0;
   min-height: 42px;
   padding: 0 14px;
   border-radius: 999px;
   background: rgba(29, 42, 34, 0.06);
-  color: var(--text);
-  font-size: 0.9rem;
   font-weight: 700;
+}
+
+.room-action-note {
+  color: var(--ls-subtext);
+  font-size: 0.84rem;
+}
+
+.room-current-id {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.9rem;
   letter-spacing: 0.03em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.room-tools {
-  border: 1px solid rgba(29, 42, 34, 0.1);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.55);
-}
-
-.room-tools summary {
-  padding: 12px 14px;
-  color: var(--muted);
+/* ルームIDで参加（補助的な操作なので控えめに） */
+.room-tools > summary {
+  color: var(--ls-subtext);
   font-size: 0.88rem;
-  font-weight: 700;
-  cursor: pointer;
-  list-style: none;
-}
-
-.room-tools summary::-webkit-details-marker {
-  display: none;
-}
-
-.room-tools summary::after {
-  content: "＋";
-  float: right;
-  color: rgba(29, 42, 34, 0.48);
-}
-
-.room-tools[open] summary::after {
-  content: "−";
 }
 
 .room-tools-body {
-  display: grid;
   gap: 10px;
-  padding: 0 14px 14px;
-}
-
-.room-input {
-  width: 100%;
-  border: 1px solid rgba(29, 42, 34, 0.12);
-  border-radius: 12px;
-  padding: 11px 14px;
-  background: #ffffff;
-  color: var(--text);
-  font-size: 16px; /* 16px より小さいと、iPhone が押したときに拡大して画面がずれる */
-}
-
-button {
-  border: 0;
-  border-radius: 999px;
-  padding: 11px 16px;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 140ms ease, opacity 140ms ease, box-shadow 140ms ease;
-}
-
-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(23, 34, 27, 0.12);
-}
-
-button:disabled {
-  cursor: default;
-  opacity: 0.48;
-  box-shadow: none;
-}
-
-.button-primary {
-  background: var(--accent);
-  color: #fffaf2;
-}
-
-.button-secondary {
-  background: #dde8dd;
-  color: #203024;
-}
-
-.button-compact {
-  padding: 10px 14px;
-  font-size: 0.82rem;
-}
-
-.button-ghost {
-  background: #f1efe7;
-  color: #203024;
-}
-
-.button-chip {
-  background: #edf0ea;
-  color: #223127;
-}
-
-.button-chip.active {
-  background: #203024;
-  color: #fffef9;
-}
-
-.hidden {
-  display: none !important;
-}
-
-@media (max-width: 900px) {
-  .topbar {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  body {
-    padding: 16px 10px 28px;
-  }
-
-  .title-row {
-    gap: 8px;
-    align-items: baseline;
-  }
-
-  .top-actions {
-    min-width: 0;
-    gap: 8px;
-    min-height: 0;
-  }
-
-  /* スマホではヘッダーを詰め、盤面までの距離を短くする */
-  .topbar {
-    gap: 10px;
-    padding: 14px 16px;
-  }
-
-  h1 {
-    font-size: 1.5rem;
-  }
-
-  .room-state-hint {
-    font-size: 0.82rem;
-  }
-
-  /* 対局中は説明文を省き、状態の1行とメニューだけにする */
-  body.is-playing .room-state-hint {
-    display: none;
-  }
-
-  .room-tools summary {
-    padding: 10px 12px;
-    font-size: 0.82rem;
-  }
-
-  .field-label {
-    margin-bottom: 2px;
-  }
-
-  .room-current-row {
-    display: flex;
-    flex-wrap: nowrap;
-  }
-
-  .link-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .room-input {
-    min-width: 0;
-  }
-
-  .button-row,
-  .room-tools-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-  }
-
-  .room-current-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-  }
-
-  .link-row .button-secondary,
-  .button-row button,
-  .room-tools-actions button,
-  .room-current-actions .button-secondary {
-    width: 100%;
-    min-width: 0;
-    justify-content: center;
-  }
 }
 
 /* ルームがないときの始め方。いちばん使う「友だちと対戦」を上に大きく、COM・1台で2人を下に並べる */
@@ -465,6 +224,7 @@ button:disabled {
   padding: 12px 8px;
   border-radius: 18px;
   text-align: center;
+  white-space: normal;
 }
 
 .start-choice-title {
@@ -478,64 +238,81 @@ button:disabled {
   opacity: 0.85;
 }
 
-/* キャッチコピー（見出しの行のすぐ下。おくるんの「つくって、おくるん」と同じ役目） */
-.brand-copy { margin: 4px 0 0; color: #1F7A45; font-size: 13px; font-weight: 800; line-height: 1.4; letter-spacing: 0.02em; }
-
 /* LINE の外で開いたときの、ログインするか LINE アプリで開くかを選ぶ画面（js/platform.js の showOutsideChoice） */
 .outside-choice {
-  position: fixed;
-  inset: 0;
   z-index: 1000;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: rgba(20, 30, 24, 0.55);
+  align-items: center;
 }
 
 .outside-choice-card {
-  display: grid;
   justify-items: center;
   gap: 10px;
   width: min(100%, 360px);
-  padding: 24px 20px 20px;
-  border-radius: 22px;
-  background: var(--panel);
-  box-shadow: var(--shadow);
   text-align: center;
 }
 
-.outside-choice-title {
-  margin: 4px 0 0;
-  font-size: 18px;
-  font-weight: 800;
-}
-
 .outside-choice-text {
-  margin: 0 0 6px;
-  color: var(--muted);
+  margin-bottom: 6px;
   font-size: 14px;
-  line-height: 1.6;
 }
 
 .outside-choice-button {
-  display: grid;
-  place-items: center;
   width: 100%;
   min-height: 48px;
-  border: 1px solid rgba(29, 42, 34, 0.18);
-  border-radius: 999px;
-  background: #fff;
-  color: var(--text);
-  font: inherit;
   font-size: 15px;
   font-weight: 800;
-  text-decoration: none;
-  cursor: pointer;
 }
 
-.outside-choice-button.is-app {
-  border-color: transparent;
-  background: #06c755;
-  color: #fff;
+@media (max-width: 900px) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
+@media (max-width: 640px) {
+  body {
+    padding: 16px 10px 28px;
+  }
+
+  .top-actions {
+    min-width: 0;
+    gap: 8px;
+    min-height: 0;
+  }
+
+  /* スマホではヘッダーを詰め、盤面までの距離を短くする */
+  .topbar {
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .room-state-hint {
+    font-size: 0.82rem;
+  }
+
+  /* 対局中は説明文を省き、状態の1行とメニューだけにする */
+  body.is-playing .room-state-hint {
+    display: none;
+  }
+
+  .room-tools > summary {
+    font-size: 0.82rem;
+  }
+
+  .link-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .button-row,
+  .room-tools-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .button-row .ls-button,
+  .room-tools-actions .ls-button,
+  .room-current-actions .ls-button {
+    width: 100%;
+  }
+}
