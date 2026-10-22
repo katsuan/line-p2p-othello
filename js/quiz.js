@@ -102,7 +102,10 @@
       });
     };
     return fetchJson(base + "index.json").then(function (files) {
-      return Promise.all((Array.isArray(files) ? files : []).map(function (fileName) {
+      // 読むのは questions/ の中の *.json だけ
+      return Promise.all((Array.isArray(files) ? files : []).filter(function (fileName) {
+        return typeof fileName === "string" && /^[A-Za-z0-9_-]+\.json$/.test(fileName);
+      }).map(function (fileName) {
         return fetchJson(base + fileName).then(function (raw) {
           return { raw: raw, fileName: fileName };
         }).catch(function (error) {

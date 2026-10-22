@@ -336,7 +336,9 @@
       // 「COMと練習」から来たときは、ルームを開いたあと COM 対戦を選んだ状態にする（URL からはすぐ消える）
       app.startWithCom = params.get("opponent") === "com" || params.get("opponent") === "local";
       app.startWithLocal = params.get("opponent") === "local";
-      updateRoomContext(params.get("room") || "", params.get("join") === "1", true);
+      // ルーム ID は英数字と - _ だけ（ほかの文字が入った URL は、ルームなしで開く）
+      var roomParam = params.get("room") || "";
+      updateRoomContext(window.OthelloPeerGuard.isRoomId(roomParam) ? roomParam : "", params.get("join") === "1", true);
     }
 
     function syncBrowserUrl() {
@@ -605,7 +607,7 @@
         return Promise.resolve();
       }
 
-      entry = Matchmaking.resolveEntry(roomData, app.userId, app.joinRequested);
+      entry = Matchmaking.resolveEntry(roomData, app.userId, app.joinRequested, app.legacyUserId);
       app.roomData = roomData;
 
       if (entry === "missing") {
@@ -788,6 +790,10 @@
     function bootstrapPeer() {
       return AppPeer.init(buildPeerId(), {
         onPeerOpen: function (peerId) { app.peerId = peerId; render(); },
+        acceptPeer: function (remotePeerId) {
+          var expected = getRemotePeerId();
+          return !expected || remotePeerId === expected;
+        },
         onIncomingConnection: function () { setOpponentStatus("つないでいます…"); },
         onConnectionOpen: play.startP2PPlay,
         onData: play.handlePeerData,
@@ -838,6 +844,8 @@
             var roomId = ui.getRoomInput();
             if (!roomId) {
               setMessage("参加したいルームIDを入力してください。");
+            } else if (!window.OthelloPeerGuard.isRoomId(roomId)) {
+              setMessage("ルームIDは、英数字と「-」「_」だけです。もう一度たしかめてね。");
             } else if (roomId === app.roomId) {
               if (app.reconnecting) {
                 setMessage("再接続は上のバナーから行えます。");
@@ -970,9 +978,13 @@
           }
         });
         Platform.initIdentity().then(function (identity) {
-          app.userId = identity.userId;
           app.displayName = identity.displayName;
           app.pictureUrl = identity.pictureUrl;
+          // ルームには LINE のユーザー ID そのものではなく、そこから作った別の文字を書く
+          app.legacyUserId = identity.userId;
+          return Platform.hashUserId(identity.userId);
+        }).then(function (userKey) {
+          app.userId = userKey;
           syncBrowserUrl();
           render();
           Matchmaking.init();

@@ -116,6 +116,8 @@ LIFF、Firebase Firestore、PeerJS を使った 2 人対戦オセロです。
   - 対局進行、P2P、再接続、COM
 - `js/ui.js`
   - DOM 更新（`render` が、ルーム・準備・問題・START・結果・盤面の順に描く）
+- `js/peer-guard.js`
+  - 相手の端末・URL から届く中身（手・盤面・名前・ルーム ID）を、使う前に確かめる
 - `js/game.js`
   - オセロの純粋ロジック（盤面の大きさは配列の長さで決まる）
 - `js/quiz.js`
@@ -162,6 +164,14 @@ sh scripts/update-version.sh
 ```
 
 GitHub Actions 配信では `GITHUB_SHA` を使って自動更新されます。
+
+## テスト
+
+```sh
+node --test test/
+```
+
+画面に触らない部分（相手から届く中身の確かめ・ルール・ルームに入るときの判定）を確かめます。
 
 ## GitHub Pages
 

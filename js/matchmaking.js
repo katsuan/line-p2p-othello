@@ -1,12 +1,16 @@
 (function (window) {
-  function resolveEntry(roomData, userId, joinRequested) {
+  // legacyUserId：前の版で作ったルーム（ID をそのまま書いていた）にも戻れるように
+  function resolveEntry(roomData, userId, joinRequested, legacyUserId) {
+    function isMe(value) {
+      return !!value && (value === userId || (!!legacyUserId && value === legacyUserId));
+    }
     if (!roomData) {
       return joinRequested ? "missing" : "create-host";
     }
-    if (roomData.hostUserId === userId) {
+    if (isMe(roomData.hostUserId)) {
       return "resume-host";
     }
-    if (roomData.guestUserId === userId) {
+    if (isMe(roomData.guestUserId)) {
       return "resume-guest";
     }
     if (!roomData.guestUserId) {

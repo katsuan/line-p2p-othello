@@ -1,8 +1,32 @@
 (function (window, document) {
   var identityPromise = null;
 
+  // 推測されにくい ID（ルーム ID など）。英小文字と数字 12 文字
   function generateId(prefix) {
-    return prefix + "-" + Math.random().toString(36).slice(2, 10);
+    var chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    var bytes = new Uint8Array(12);
+    var text = "";
+    var index;
+    window.crypto.getRandomValues(bytes);
+    for (index = 0; index < bytes.length; index += 1) {
+      text += chars.charAt(bytes[index] % chars.length);
+    }
+    return prefix + "-" + text;
+  }
+
+  // ルームに書く本人の印：ユーザー ID の SHA-256 の先頭 32 文字（元の ID には戻せない）
+  function hashUserId(userId) {
+    var text = "hiqri:" + String(userId || "");
+    if (!window.crypto || !window.crypto.subtle || !window.TextEncoder) {
+      return Promise.resolve(sanitizeForPeer(userId));
+    }
+    return window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)).then(function (buffer) {
+      return "u" + Array.prototype.map.call(new Uint8Array(buffer), function (byte) {
+        return ("0" + byte.toString(16)).slice(-2);
+      }).join("").slice(0, 32);
+    }).catch(function () {
+      return sanitizeForPeer(userId);
+    });
   }
 
   function sanitizeForPeer(value) {
@@ -322,10 +346,11 @@
       '<img src="' + getAssetUrl("assets/icon.svg") + '" alt="" width="56" height="56">' +
       '<p id="outsideChoiceTitle" class="ls-sheet-title">LINE の外で開いています</p>' +
       '<p class="ls-hint outside-choice-text">友だちとの対戦は、LINE で開くかログインすると遊べます。COM との練習は、このまま遊べます。</p>' +
-      '<a class="ls-outside-button is-app outside-choice-button" href="' + appUrl + '">💬 LINE アプリで開く</a>' +
+      '<a class="ls-outside-button is-app outside-choice-button" data-act="app">💬 LINE アプリで開く</a>' +
       '<button class="ls-outside-button outside-choice-button" type="button" data-act="login">🔑 ログインして遊ぶ</button>' +
       '<button class="ls-sheet-cancel" type="button" data-act="guest">🤖 ログインせずに練習する</button>' +
       "</div>";
+    box.querySelector('[data-act="app"]').setAttribute("href", appUrl);
     box.querySelector('[data-act="login"]').addEventListener("click", function () {
       liff.login({ redirectUri: loginReturnUrl() });
     });
@@ -498,6 +523,7 @@
   window.OthelloPlatform = {
     generateId: generateId,
     sanitizeForPeer: sanitizeForPeer,
+    hashUserId: hashUserId,
     getAppBaseUrl: getAppBaseUrl,
     getAssetUrl: getAssetUrl,
     buildLiffRoomUrl: buildLiffRoomUrl,

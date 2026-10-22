@@ -7,6 +7,12 @@
     }
   }
 
+  function esc(value) {
+    return String(value).replace(/[&<>"']/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[ch];
+    });
+  }
+
   function setHidden(element, shouldHide) {
     if (!element) {
       return;
@@ -27,8 +33,10 @@
     if (!element) {
       return;
     }
-    element.style.backgroundImage = pictureUrl ? ('url("' + pictureUrl + '")') : "none";
-    element.textContent = pictureUrl ? "" : (name || "?").charAt(0).toUpperCase();
+    // 画像は LINE のプロフィール画像の URL だけ使う（ほかは頭文字を出す）
+    var url = window.OthelloPeerGuard.cleanPictureUrl(pictureUrl || "");
+    element.style.backgroundImage = url ? ('url("' + url.replace(/["\\\n]/g, encodeURIComponent) + '")') : "none";
+    element.textContent = url ? "" : (name || "?").charAt(0).toUpperCase();
   }
 
   // 盤面のマスを作る。大きさ（6 / 8）が変わったら作り直す
@@ -590,7 +598,7 @@
     var renderedQuizPrompt = null;
 
     function chip(label, value, attr) {
-      return '<button class="ls-chip" type="button" aria-pressed="false" ' + attr + '="' + value + '">' + label + "</button>";
+      return '<button class="ls-chip" type="button" aria-pressed="false" ' + attr + '="' + esc(value) + '">' + esc(label) + "</button>";
     }
 
     function rulesText(app) {
@@ -955,7 +963,7 @@
           return chip(size + "×" + size, size, "data-size");
         }).join("");
         elements.pickRows.innerHTML = window.OthelloQuiz.GENRES.map(function (genre) {
-          return '<div class="pick-row"><span class="pick-genre">' + genre.icon + " " + genre.label + "</span>" +
+          return '<div class="pick-row"><span class="pick-genre">' + esc(genre.icon + " " + genre.label) + "</span>" +
             '<div class="ls-chips">' +
             genre.levels.map(function (level) { return chip(level.label, genre.id + ":" + level.id, "data-pick"); }).join("") +
             "</div></div>";

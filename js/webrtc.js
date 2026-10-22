@@ -89,6 +89,11 @@
             conn.close();
             return;
           }
+          // ルームに書かれた相手と別の端末からは、つながない
+          if (self.state.handlers.acceptPeer && !self.state.handlers.acceptPeer(conn.peer)) {
+            conn.close();
+            return;
+          }
 
           attachConnectionHandlers(self.state, conn);
 

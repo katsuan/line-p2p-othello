@@ -1,6 +1,7 @@
 (function (window) {
   var Game = window.OthelloGame;
   var Quiz = window.OthelloQuiz;
+  var Guard = window.OthelloPeerGuard;
   var QUIZ_RESULT_MS = 900;
   var RECONNECT_TIMEOUT_MS = 8000;
   var RECONNECT_RETRY_MS = 1500;
@@ -491,17 +492,19 @@
       app.resultOverlayDismissed = false;
     }
 
-    function enterSpectatorMode(data) {
+    // state：相手から届いて Guard で確かめた盤面
+    function enterSpectatorMode(data, state) {
       clearResumeState();
       clearStartReady();
       app.spectatorMode = true;
       app.spectatorPractice = !!data.practice;
       app.opponentMode = "human";
       app.transportMode = "spectator";
-      if (data.displayName || data.pictureUrl) {
-        deps.setOpponentProfile(data.displayName || "対戦相手", data.pictureUrl || "");
+      var profile = Guard.cleanProfile(data);
+      if (profile.displayName || profile.pictureUrl) {
+        deps.setOpponentProfile(profile.displayName || "対戦相手", profile.pictureUrl);
       }
-      applySharedState(data.payload || data);
+      applySharedState(state);
       deps.setTransport("観戦中");
       deps.setMode("復帰待機");
       deps.setOpponentStatus("選択待ち");
@@ -1018,32 +1021,57 @@
       deps.setMessage("この試合を終了しました。続ける場合は新しいルームを作成するか、ページを開き直してください。");
     }
 
+    // 相手の端末から届いた知らせ。形・範囲・いまの場面に合うものだけ受けつける（合わないものは読み飛ばす）
     function handlePeerData(data) {
-      if (!data || !data.type) {
+      if (!data || typeof data !== "object" || typeof data.type !== "string") {
         return;
       }
-      if (data.type === "move") {
-        makeMove(Number(data.row), Number(data.col), data.color, "remote", Number(data.version));
-      } else if (data.type === "miss") {
-        applyMiss(Number(data.row), Number(data.col), data.color, "remote", Number(data.version));
+      var isHost = app.role === "host";
+      var move;
+      var state;
+      var choice;
+      var profile;
+      if (data.type === "move" || data.type === "miss") {
+        if (app.transportMode !== "p2p" || !app.matchConfigured) {
+          return;
+        }
+        move = Guard.cleanRemoteMove(data, app.game, app.myColor);
+        if (!move) {
+          switchToCom("相手から無効な手が送信されました。");
+        } else if (data.type === "move") {
+          makeMove(move.row, move.col, move.color, "remote", move.version);
+        } else {
+          applyMiss(move.row, move.col, move.color, "remote", move.version);
+        }
       } else if (data.type === "start") {
-        if (data.rules && app.role !== "host") {
+        if (isHost || app.matchConfigured || !Guard.isColor(data.hostColor)) {
+          return;
+        }
+        if (data.rules) {
           app.rules = Quiz.normalizeRules(data.rules);
         }
         applyMatchSettings(data.hostColor, false);
       } else if (data.type === "setup-sync") {
-        if (data.rules && app.role !== "host") {
+        if (app.matchConfigured) {
+          return;
+        }
+        if (data.rules && !isHost) {
           applyRules(data.rules);
         }
-        app.desiredHostColor = data.hostColor || app.desiredHostColor;
+        if (Guard.isColor(data.hostColor)) {
+          app.desiredHostColor = data.hostColor;
+        }
         clearStartReady();
         deps.setMessage("開始前の設定が更新されました。色を確認して、2人とも START を押してください。");
       } else if (data.type === "start-ready") {
+        if (app.matchConfigured) {
+          return;
+        }
         app.remoteStartReady = true;
-        if (data.hostColor) {
+        if (Guard.isColor(data.hostColor)) {
           app.desiredHostColor = data.hostColor;
         }
-        if (data.rules && app.role !== "host") {
+        if (data.rules && !isHost) {
           applyRules(data.rules);
         }
         deps.setMessage(app.localStartReady ?
@@ -1053,39 +1081,62 @@
       } else if (data.type === "quiz-open") {
         showOpponentQuiz(data);
       } else if (data.type === "quiz-choice") {
-        if (app.opponentQuiz && app.opponentQuiz.chosen === null) {
-          app.opponentQuiz.chosen = Number(data.chosen);
-          app.opponentQuiz.correct = app.opponentQuiz.chosen === app.opponentQuiz.question.answer;
-          app.opponentQuiz.typed = typeof data.typed === "string" ? data.typed.slice(0, 40) : "";
+        choice = Guard.cleanQuizChoice(data);
+        if (choice && app.opponentQuiz && app.opponentQuiz.chosen === null) {
+          app.opponentQuiz.chosen = choice.chosen;
+          app.opponentQuiz.correct = choice.chosen === app.opponentQuiz.question.answer;
+          app.opponentQuiz.typed = choice.typed;
         }
       } else if (data.type === "profile") {
-        deps.setOpponentProfile(data.displayName || "対戦相手", data.pictureUrl || "");
+        profile = Guard.cleanProfile(data);
+        deps.setOpponentProfile(profile.displayName || "対戦相手", profile.pictureUrl);
       } else if (data.type === "state") {
-        applySharedState(data);
+        // 盤面をそろえる知らせは、ホストからだけ
+        state = !isHost && Guard.cleanSharedState(data);
+        if (!state) {
+          return;
+        }
+        applySharedState(state);
         finalizeP2PResume("相手とまたつながりました。盤面をそろえています。");
       } else if (data.type === "resume-preview") {
-        enterSpectatorMode(data);
+        state = Guard.cleanSharedState(data.payload);
+        if (!state) {
+          return;
+        }
+        enterSpectatorMode(data, state);
       } else if (data.type === "resume-continue") {
-        applySharedState(data.payload || data);
+        state = app.spectatorMode && Guard.cleanSharedState(data.payload);
+        if (!state) {
+          return;
+        }
+        applySharedState(state);
         finalizeP2PResume("今の盤面から対局を再開しました。");
       } else if (data.type === "resume-restart") {
+        if (!app.spectatorMode) {
+          return;
+        }
         clearResumeState();
         clearStartReady();
         app.opponentMode = "human";
         app.transportMode = "p2p";
         deps.setTransport("WebRTC 接続済み");
         deps.setOpponentStatus("接続済み");
-        app.currentHostColor = data.hostColor || app.currentHostColor;
-        app.desiredHostColor = data.hostColor || app.desiredHostColor;
+        if (Guard.isColor(data.hostColor)) {
+          app.currentHostColor = data.hostColor;
+          app.desiredHostColor = data.hostColor;
+        }
         prepareRematchSetup();
         deps.setMessage("最初からやり直します。色を決めて、2人とも START を押してください。");
       } else if (data.type === "rematch-request") {
+        if (!app.game.winner) {
+          return;
+        }
         app.rematch.incoming = true;
         app.rematch.outgoing = false;
         app.resultOverlayDismissed = false;
         deps.setMessage("相手がもう一戦したいそうです。");
       } else if (data.type === "rematch-accept") {
-        if (app.role === "host" && app.rematch.outgoing) {
+        if (isHost && app.rematch.outgoing) {
           AppPeer.send({ type: "rematch-setup" });
           prepareRematchSetup();
         } else {
@@ -1096,9 +1147,13 @@
         app.resultOverlayDismissed = false;
         deps.setMessage("相手は再戦しませんでした。");
       } else if (data.type === "rematch-setup") {
+        // 次の対局の準備へ移るのは、ホストからの知らせで、対局中でないときだけ
+        if (isHost || (app.matchConfigured && !app.game.winner)) {
+          return;
+        }
         prepareRematchSetup();
-      } else if (data.type === "rematch-start") {
-        applyMatchSettings(data.hostColor, true);
+      } else {
+        return;
       }
       deps.render();
     }
