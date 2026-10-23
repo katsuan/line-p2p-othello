@@ -14,6 +14,14 @@
       deps.stopTimer("reconnectRetryTimer");
     }
 
+    // 再接続の待ちを終える（つながった・あきらめた）
+    function endReconnect() {
+      app.reconnecting = false;
+      app.reconnectReason = "";
+      app.reconnectDeadline = 0;
+      stopReconnectTimers();
+    }
+
     function withFallbackTimeout(promise, timeoutMs) {
       return new Promise(function (resolve, reject) {
         var settled = false;
@@ -54,6 +62,17 @@
       app.remoteStartReady = false;
     }
 
+    // 相手に送る。送れなければ再接続を始める（送れたら true）
+    function sendOrReconnect(message, failText) {
+      try {
+        AppPeer.send(message);
+        return true;
+      } catch (error) {
+        beginReconnect(deps.failed(failText, error));
+        return false;
+      }
+    }
+
     function buildStatePayload(type) {
       return {
         type: type || "state",
@@ -80,13 +99,9 @@
 
     // 対局が終わったあとにルールを変えたら、相手といっしょに次の対局の準備へ移る
     function moveToNextSetup() {
-      if (app.opponentMode !== "com" && AppPeer.isConnected()) {
-        try {
-          AppPeer.send({ type: "rematch-setup" });
-        } catch (error) {
-          beginReconnect(deps.failed("ルールの変更を相手に届けられませんでした。", error));
-          return false;
-        }
+      if (app.opponentMode !== "com" && AppPeer.isConnected() &&
+        !sendOrReconnect({ type: "rematch-setup" }, "ルールの変更を相手に届けられませんでした。")) {
+        return false;
       }
       prepareRematchSetup();
       return true;
@@ -284,15 +299,11 @@
       if (!AppPeer.isConnected() || app.opponentMode !== "human" || app.matchConfigured) {
         return;
       }
-      try {
-        AppPeer.send({
-          type: "setup-sync",
-          hostColor: app.desiredHostColor,
-          rules: app.role === "host" ? app.rules : null
-        });
-      } catch (error) {
-        beginReconnect(deps.failed("準備の内容を相手に届けられませんでした。", error));
-      }
+      sendOrReconnect({
+        type: "setup-sync",
+        hostColor: app.desiredHostColor,
+        rules: app.role === "host" ? app.rules : null
+      }, "準備の内容を相手に届けられませんでした。");
     }
 
     function tryStartHumanMatch() {
@@ -310,11 +321,8 @@
 
       rollQuizSeed();
       applyMatchSettings(app.desiredHostColor, false);
-      try {
-        AppPeer.send({ type: "start", hostColor: app.desiredHostColor, rules: app.rules });
+      if (sendOrReconnect({ type: "start", hostColor: app.desiredHostColor, rules: app.rules }, "START を相手に届けられませんでした。")) {
         sendProfile();
-      } catch (error) {
-        beginReconnect(deps.failed("START を相手に届けられませんでした。", error));
       }
     }
 
@@ -344,16 +352,15 @@
         return;
       }
 
-      try {
-        app.localStartReady = true;
-        AppPeer.send({ type: "start-ready", hostColor: app.desiredHostColor, rules: app.role === "host" ? app.rules : null });
-        deps.setMessage(app.remoteStartReady ?
-          "両者の START が揃いました。開始しています。" :
-          "あなたは START 準備OKです。相手の START を待っています。");
-        tryStartHumanMatch();
-      } catch (error) {
-        beginReconnect(deps.failed("START を相手に届けられませんでした。", error));
+      app.localStartReady = true;
+      if (!sendOrReconnect({ type: "start-ready", hostColor: app.desiredHostColor, rules: app.role === "host" ? app.rules : null },
+        "START を相手に届けられませんでした。")) {
+        return;
       }
+      deps.setMessage(app.remoteStartReady ?
+        "両者の START が揃いました。開始しています。" :
+        "あなたは START 準備OKです。相手の START を待っています。");
+      tryStartHumanMatch();
     }
 
     function startPracticeWhileWaiting() {
@@ -410,15 +417,12 @@
     }
 
     function switchToCom(reason) {
-      app.reconnecting = false;
-      app.reconnectReason = "";
-      app.reconnectDeadline = 0;
+      endReconnect();
       clearResumeState();
       clearStartReady();
       app.transportMode = "com";
       app.opponentMode = "com";
       deps.stopTimer("p2pTimer");
-      stopReconnectTimers();
       deps.stopRoomSubscription();
       deps.clearRematch();
       app.pendingPeerTarget = "";
@@ -517,13 +521,10 @@
     function finalizeP2PResume(message) {
       clearResumeState();
       clearStartReady();
-      app.reconnecting = false;
-      app.reconnectReason = "";
-      app.reconnectDeadline = 0;
+      endReconnect();
       app.opponentMode = "human";
       app.transportMode = "p2p";
       deps.stopTimer("p2pTimer");
-      stopReconnectTimers();
       deps.stopRoomSubscription();
       deps.setTransport("WebRTC 接続済み");
       deps.setMode("P2P 対戦");
@@ -545,17 +546,10 @@
       deps.setMode("P2P 対戦");
       deps.setOpponentStatus("接続済み");
       deps.setMessage("今の盤面から対局を再開しました。");
-      try {
-        sendProfile();
-        AppPeer.send({
-          type: "resume-continue",
-          payload: buildStatePayload("resume-continue")
-        });
-      } catch (error) {
-        beginReconnect(deps.failed("再開を相手に届けられませんでした。", error));
-        return;
+      sendProfile();
+      if (sendOrReconnect({ type: "resume-continue", payload: buildStatePayload("resume-continue") }, "再開を相手に届けられませんでした。")) {
+        deps.render();
       }
-      deps.render();
     }
 
     function restartReturnedGame() {
@@ -570,13 +564,8 @@
       app.transportMode = "p2p";
       deps.setTransport("WebRTC 接続済み");
       deps.setOpponentStatus("接続済み");
-      try {
-        AppPeer.send({
-          type: "resume-restart",
-          hostColor: app.currentHostColor || app.desiredHostColor || Game.BLACK
-        });
-      } catch (error) {
-        beginReconnect(deps.failed("やり直しを相手に届けられませんでした。", error));
+      if (!sendOrReconnect({ type: "resume-restart", hostColor: app.currentHostColor || app.desiredHostColor || Game.BLACK },
+        "やり直しを相手に届けられませんでした。")) {
         return;
       }
       prepareRematchSetup();
@@ -605,6 +594,23 @@
         return true;
       }
       return false;
+    }
+
+    // つながりが切れたらしい知らせ（相手との線が閉じた・合図の線が切れた）。
+    // 相手との線がまだ生きていれば、対局はそのまま続ける
+    function handleLinkLost(reason) {
+      app.pendingPeerTarget = "";
+      if (AppPeer.isConnected()) {
+        return;
+      }
+      if (!handleResumeConnectionLost()) {
+        beginReconnect(reason);
+      }
+    }
+
+    // つなぎにいった相手が、いまいない（PeerJS の peer-unavailable）。次の試しでまたつなぎにいけるようにする
+    function handlePeerUnavailable() {
+      app.pendingPeerTarget = "";
     }
 
     function beginReconnect(reason) {
@@ -689,7 +695,8 @@
         return;
       }
 
-      if (app.matchConfigured && !app.reconnecting && app.transportMode !== "com") {
+      // 対局中にゲストが開きなおした：ホストから盤面が届くのを待つ（ホストは下で盤面を送る）
+      if (app.role !== "host" && app.matchConfigured && !app.reconnecting && app.transportMode !== "com") {
         clearResumeState();
         clearStartReady();
         deps.stopTimer("p2pTimer");
@@ -705,16 +712,13 @@
       // 待っている間にホストが START していたら、つながったあとも準備OKのままにする
       var readyWhileWaiting = app.role === "host" && !app.matchConfigured && !!app.localStartReady;
       var firstJoin = app.role === "host" && !app.matchConfigured && app.transportMode === "matchmaking";
-      app.reconnecting = false;
-      app.reconnectReason = "";
-      app.reconnectDeadline = 0;
+      endReconnect();
       app.staleGuest = false;
       clearResumeState();
       clearStartReady();
       app.opponentMode = "human";
       app.transportMode = "p2p";
       deps.stopTimer("p2pTimer");
-      stopReconnectTimers();
       deps.stopRoomSubscription();
       deps.setTransport("WebRTC 接続済み");
       deps.setMode("P2P 対戦");
@@ -790,11 +794,7 @@
         return;
       }
       if (app.transportMode === "p2p") {
-        try {
-          AppPeer.send({ type: "move", color: color, row: row, col: col, version: nextVersion });
-        } catch (error) {
-          beginReconnect(deps.failed("相手に届けられませんでした。", error));
-        }
+        sendOrReconnect({ type: "move", color: color, row: row, col: col, version: nextVersion }, "相手に届けられませんでした。");
       }
     }
 
@@ -947,11 +947,7 @@
         return;
       }
       if (app.transportMode === "p2p") {
-        try {
-          AppPeer.send({ type: "miss", color: color, row: row, col: col, version: nextVersion });
-        } catch (error) {
-          beginReconnect(deps.failed("相手に届けられませんでした。", error));
-        }
+        sendOrReconnect({ type: "miss", color: color, row: row, col: col, version: nextVersion }, "相手に届けられませんでした。");
       }
     }
 
@@ -967,22 +963,26 @@
       app.rematch.incoming = false;
       app.resultOverlayDismissed = false;
       deps.render();
-      try {
-        AppPeer.send({ type: "rematch-request" });
-        deps.setMessage("再戦をお願いしました。返事を待っています。");
-        deps.stopTimer("rematchTimer");
-        app.rematchTimer = window.setTimeout(function () {
-          if (!app.rematch.outgoing) {
-            return;
-          }
-          app.rematch.outgoing = false;
-          deps.setMessage("再戦の返事がありませんでした。もう一度お願いするか、閉じられます。");
-          deps.render();
-        }, REMATCH_RESPONSE_TIMEOUT_MS);
-      } catch (error) {
-        deps.stopTimer("rematchTimer");
+      deps.stopTimer("rematchTimer");
+      if (!sendOrReconnect({ type: "rematch-request" }, "再戦のお願いを届けられませんでした。")) {
         app.rematch.outgoing = false;
-        beginReconnect(deps.failed("再戦のお願いを届けられませんでした。", error));
+        return;
+      }
+      deps.setMessage("再戦をお願いしました。返事を待っています。");
+      app.rematchTimer = window.setTimeout(function () {
+        if (!app.rematch.outgoing) {
+          return;
+        }
+        app.rematch.outgoing = false;
+        deps.setMessage("再戦の返事がありませんでした。もう一度お願いするか、閉じられます。");
+        deps.render();
+      }, REMATCH_RESPONSE_TIMEOUT_MS);
+    }
+
+    // ホストが次の対局の準備を決めて、相手にも知らせる
+    function hostBeginsRematchSetup() {
+      if (sendOrReconnect({ type: "rematch-setup" }, "再戦の準備を相手に届けられませんでした。")) {
+        prepareRematchSetup();
       }
     }
 
@@ -990,16 +990,12 @@
       if (!app.rematch.incoming || !AppPeer.isConnected()) {
         return;
       }
-      try {
-        AppPeer.send({ type: "rematch-accept" });
-      } catch (error) {
-        beginReconnect(deps.failed("再戦の返事を届けられませんでした。", error));
+      if (!sendOrReconnect({ type: "rematch-accept" }, "再戦の返事を届けられませんでした。")) {
         return;
       }
       app.rematch.incoming = false;
       if (app.role === "host") {
-        AppPeer.send({ type: "rematch-setup" });
-        prepareRematchSetup();
+        hostBeginsRematchSetup();
       } else {
         app.rematch.outgoing = true;
         deps.setMessage("再戦を承認しました。開始前の準備へ戻ります。");
@@ -1012,11 +1008,7 @@
       app.resultOverlayDismissed = true;
       deps.render();
       if (AppPeer.isConnected()) {
-        try {
-          AppPeer.send({ type: "rematch-reject" });
-        } catch (error) {
-          beginReconnect(deps.failed("再戦の返事を届けられませんでした。", error));
-        }
+        sendOrReconnect({ type: "rematch-reject" }, "再戦の返事を届けられませんでした。");
       }
       deps.setMessage("この試合を終了しました。続ける場合は新しいルームを作成するか、ページを開き直してください。");
     }
@@ -1064,13 +1056,11 @@
         clearStartReady();
         deps.setMessage("開始前の設定が更新されました。色を確認して、2人とも START を押してください。");
       } else if (data.type === "start-ready") {
-        if (app.matchConfigured) {
+        // 色を変えたのと同時に押された START（古い色のまま）は受けない。相手には色の変更が届いて START が外れる
+        if (app.matchConfigured || (Guard.isColor(data.hostColor) && data.hostColor !== app.desiredHostColor)) {
           return;
         }
         app.remoteStartReady = true;
-        if (Guard.isColor(data.hostColor)) {
-          app.desiredHostColor = data.hostColor;
-        }
         if (data.rules && !isHost) {
           applyRules(data.rules);
         }
@@ -1131,15 +1121,25 @@
         if (!app.game.winner) {
           return;
         }
+        if (app.rematch.outgoing) {
+          // 2人が同時に「もう一戦する」を押した：聞き返さずに、ホストが次の準備を決める
+          if (isHost) {
+            hostBeginsRematchSetup();
+          } else {
+            deps.setMessage("2人とも再戦を選びました。開始前の準備へ戻ります。");
+          }
+          deps.render();
+          return;
+        }
         app.rematch.incoming = true;
         app.rematch.outgoing = false;
         app.resultOverlayDismissed = false;
         deps.setMessage("相手がもう一戦したいそうです。");
       } else if (data.type === "rematch-accept") {
-        if (isHost && app.rematch.outgoing) {
-          AppPeer.send({ type: "rematch-setup" });
-          prepareRematchSetup();
-        } else {
+        // 返事待ちが時間切れになったあとに届いた返事でも、対局が終わっていれば準備へ進む
+        if (isHost && app.game.winner) {
+          hostBeginsRematchSetup();
+        } else if (!isHost) {
           deps.setMessage("相手が再戦を承認しました。開始前の準備へ戻ります。");
         }
       } else if (data.type === "rematch-reject") {
@@ -1159,7 +1159,9 @@
     }
 
     return {
-      applyMatchSettings: applyMatchSettings,
+      clearResumeState: clearResumeState,
+      clearStartReady: clearStartReady,
+      endReconnect: endReconnect,
       openQuiz: openQuiz,
       answerQuiz: answerQuiz,
       answerQuizText: answerQuizText,
@@ -1167,14 +1169,14 @@
       beginReconnect: beginReconnect,
       connectToRemotePeer: connectToRemotePeer,
       handlePeerData: handlePeerData,
-      makeMove: makeMove,
+      handleLinkLost: handleLinkLost,
+      handlePeerUnavailable: handlePeerUnavailable,
       requestRematch: requestRematch,
       acceptRematch: acceptRematch,
       rejectRematch: rejectRematch,
       resumeCurrentGame: resumeCurrentGame,
       restartReturnedGame: restartReturnedGame,
       retryReconnectNow: retryReconnectNow,
-      handleResumeConnectionLost: handleResumeConnectionLost,
       startMatch: startMatch,
       syncSetupState: sendSetupState,
       sendMove: sendMove,

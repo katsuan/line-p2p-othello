@@ -110,6 +110,14 @@
         });
 
         peer.on("disconnected", function () {
+          // 合図の線（シグナリング）が切れただけ。同じ ID でつなぎなおす（相手との線はそのまま使える）
+          window.setTimeout(function () {
+            if (!peer.destroyed && peer.disconnected) {
+              try {
+                peer.reconnect();
+              } catch (error) {}
+            }
+          }, 1000);
           if (self.state.handlers.onPeerDisconnected) {
             self.state.handlers.onPeerDisconnected();
           }

@@ -197,14 +197,11 @@
     }
 
     function clearResumeState() {
-      app.spectatorMode = false;
-      app.resumePending = false;
-      app.resumeRequesterName = "";
+      play.clearResumeState();
     }
 
     function clearStartReady() {
-      app.localStartReady = false;
-      app.remoteStartReady = false;
+      play.clearStartReady();
     }
 
     function freshLives() {
@@ -362,19 +359,44 @@
       return !app.game.winner && (app.matchConfigured || !!app.game.lastMove);
     }
 
-    function applyPromotedHostRoom(roomData) {
-      app.role = "host";
-      app.joinRequested = false;
-      app.hostTransferred = true;
-      app.staleGuest = false;
-      app.pendingPeerTarget = "";
-      app.roomData = roomData || app.roomData || {};
+    // 手元のルームの中身を「自分がホストで、相手の席は空き」にする（Firestore に書いたのと同じ形）
+    function markRoomWaitingForGuest() {
+      app.roomData = app.roomData || {};
       app.roomData.roomId = app.roomId;
       app.roomData.hostUserId = app.userId;
       app.roomData.hostPeerId = app.peerId;
       app.roomData.guestUserId = "";
       app.roomData.guestPeerId = "";
       app.roomData.status = "waiting";
+    }
+
+    // 友だちの参加を待つ、対局前のホストに戻す（再接続の待ちも終える）
+    function backToWaitingRoom(opponentStatus, message) {
+      play.endReconnect();
+      app.opponentMode = "human";
+      app.transportMode = "matchmaking";
+      app.currentHostColor = "";
+      clearStartReady();
+      app.matchConfigured = false;
+      app.myColor = "";
+      clearResumeState();
+      clearRematch();
+      resetGame();
+      setOpponentProfile("参加待ち", "");
+      setTransport("ゲスト待機中");
+      setMode("マッチング");
+      setOpponentStatus(opponentStatus);
+      setMessage(message);
+      subscribeToRoom();
+    }
+
+    function applyPromotedHostRoom() {
+      app.role = "host";
+      app.joinRequested = false;
+      app.hostTransferred = true;
+      app.staleGuest = false;
+      app.pendingPeerTarget = "";
+      markRoomWaitingForGuest();
       syncBrowserUrl();
     }
 
@@ -400,20 +422,9 @@
         if (activeMatch) {
           play.switchToCom(reason + " このルームを引き継ぎました。");
         } else {
-          app.opponentMode = "human";
-          app.transportMode = "matchmaking";
-          clearStartReady();
-          app.matchConfigured = false;
-          app.myColor = "";
-          clearResumeState();
-          clearRematch();
-          resetGame();
-          setOpponentProfile("参加待ち", "");
-          setTransport("ゲスト待機中");
-          setMode("マッチング");
-          setOpponentStatus("このルームを引き継ぎました");
-          setMessage("ホストの復帰待ちは終了しました。このルームを引き継いだので、友だちを待つか COM に切り替えられます。");
-          subscribeToRoom();
+          backToWaitingRoom("このルームを引き継ぎました",
+            "ホストの復帰待ちは終了しました。このルームを引き継いだので、友だちを待つか COM に切り替えられます。");
+          app.currentHostColor = nextHostColor;
         }
         render();
         return true;
@@ -434,29 +445,10 @@
       setMessage(reason + " 相手の席を開放して待機状態へ戻しています。");
 
       return Matchmaking.resetHostRoom(app.roomId, app.userId, app.peerId).then(function () {
-        app.roomData = app.roomData || {};
-        app.roomData.roomId = app.roomId;
-        app.roomData.hostUserId = app.userId;
-        app.roomData.hostPeerId = app.peerId;
-        app.roomData.guestUserId = "";
-        app.roomData.guestPeerId = "";
-        app.roomData.status = "waiting";
+        markRoomWaitingForGuest();
         app.staleGuest = false;
         app.hostTransferred = false;
-        app.opponentMode = "human";
-        app.currentHostColor = "";
-        clearStartReady();
-        app.matchConfigured = false;
-        app.myColor = "";
-        clearResumeState();
-        clearRematch();
-        resetGame();
-        setOpponentProfile("参加待ち", "");
-        setTransport("ゲスト待機中");
-        setMode("マッチング");
-        setOpponentStatus("ゲスト待機中");
-        setMessage("相手の復帰待ちは終了しました。新しく参加を待つか、COM に切り替えられます。");
-        subscribeToRoom();
+        backToWaitingRoom("ゲスト待機中", "相手の復帰待ちは終了しました。新しく参加を待つか、COM に切り替えられます。");
         render();
         return true;
       }).catch(function () {
@@ -797,25 +789,18 @@
         onIncomingConnection: function () { setOpponentStatus("つないでいます…"); },
         onConnectionOpen: play.startP2PPlay,
         onData: play.handlePeerData,
-        onConnectionClose: function () {
-          app.pendingPeerTarget = "";
-          if (!play.handleResumeConnectionLost()) {
-            play.beginReconnect("相手との接続が切れました。");
+        onConnectionClose: function () { play.handleLinkLost("相手との接続が切れました。"); },
+        onConnectionError: function (error) { play.handleLinkLost(failed("相手との通信がうまくいきませんでした。", error)); },
+        onPeerError: function (error) {
+          // つなぎにいった相手がいまいないだけなら、知らせずに次の試しを待つ（相手が戻れば、どちらかからつながる）
+          if (error && error.type === "peer-unavailable") {
+            failed("相手がまだいません。", error);
+            play.handlePeerUnavailable();
+            return;
           }
+          setMessage(failed("つなぐ準備がうまくいきませんでした。電波のよいところで、もう一度ためしてね。", error));
         },
-        onConnectionError: function (error) {
-          app.pendingPeerTarget = "";
-          if (!play.handleResumeConnectionLost()) {
-            play.beginReconnect(failed("相手との通信がうまくいきませんでした。", error));
-          }
-        },
-        onPeerError: function (error) { setMessage(failed("つなぐ準備がうまくいきませんでした。電波のよいところで、もう一度ためしてね。", error)); },
-        onPeerDisconnected: function () {
-          app.pendingPeerTarget = "";
-          if (!play.handleResumeConnectionLost()) {
-            play.beginReconnect("通信が切れました。");
-          }
-        }
+        onPeerDisconnected: function () { play.handleLinkLost("通信が切れました。"); }
       });
     }
 
