@@ -534,6 +534,7 @@
     shareRoom: shareRoom,
     shareResult: shareResult,
     buildFlexResultMessage: buildFlexResultMessage,
+    buildFlexInviteMessage: buildFlexInviteMessage,
     reload: reload
   };
 }(window, document));

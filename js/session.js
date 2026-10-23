@@ -619,7 +619,7 @@
       if (entry === "full") {
         setTransport("満室");
         setOpponentStatus("利用不可");
-        setMessage("このルームはすでに2人参加しています。");
+        setMessage("このルームは、もう2人そろっています。「別のルームに参加 / 新しい対局」から、新しいルームで遊べます。");
         return Promise.resolve();
       }
 
