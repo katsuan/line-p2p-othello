@@ -454,11 +454,16 @@
     });
   }
 
+  // 季節の絵文字（Q キットの season.js。まだ読めていなければ付けない）
+  function withSeason(text) {
+    return window.QSeason && typeof window.QSeason.decorate === "function" ? window.QSeason.decorate(text) : text;
+  }
+
   function shareResult(info) {
     var text = "ひっくりの結果：" + info.myName + " " + info.mine + " - " + info.theirs + " " + info.opponentName;
     if (canPickTarget()) {
       return liff.shareTargetPicker([buildFlexResultMessage(info)]).then(function (result) {
-        return { status: result ? "shared" : "cancelled", message: result ? "結果を送りました。" : "送るのをやめました。" };
+        return { status: result ? "shared" : "cancelled", message: result ? withSeason("結果を送りました。") : "送るのをやめました。" };
       }).catch(function (error) {
         if (window.console) {
           window.console.warn("[ひっくり] 結果を送れませんでした", error);
@@ -476,7 +481,7 @@
           buildFlexInviteMessage(roomId, shareUrl)
         ]).then(function (result) {
           if (result) {
-            return { status: "shared", message: "招待を送りました。友だちの参加を待っています。" };
+            return { status: "shared", message: withSeason("招待を送りました。友だちの参加を待っています。") };
           }
           return { status: "cancelled", message: "招待を送るのをやめました。" };
         }).catch(function (error) {
