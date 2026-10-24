@@ -537,7 +537,8 @@
       setOpponentStatus: setOpponentStatus,
       setTransport: setTransport,
       stopRoomSubscription: stopRoomSubscription,
-      stopTimer: stopTimer
+      stopTimer: stopTimer,
+      withSeason: Platform.withSeason
     });
 
     function subscribeToRoom() {

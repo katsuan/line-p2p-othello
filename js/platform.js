@@ -454,7 +454,7 @@
     });
   }
 
-  // 季節の絵文字（Q キットの season.js。まだ読めていなければ付けない）
+  // 季節の絵文字（Q キットの season.js。まだ読めていなければ付けない）。うれしい瞬間の短い文だけに
   function withSeason(text) {
     return window.QSeason && typeof window.QSeason.decorate === "function" ? window.QSeason.decorate(text) : text;
   }
@@ -526,6 +526,7 @@
   }
 
   window.OthelloPlatform = {
+    withSeason: withSeason,
     generateId: generateId,
     sanitizeForPeer: sanitizeForPeer,
     hashUserId: hashUserId,

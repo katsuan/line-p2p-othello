@@ -17,7 +17,8 @@ function endGame(extra) {
   // 黒が1手で全部取って終わる盤面
   app.game.board = Game.deserializeBoard(["BW......", "........", "........", "........", "........", "........", "........", "........"]);
   app.game.board[0][2] = "";
-  const deps = { clearRematch() {}, failed: (m) => m, freshLives: () => ({}), getRemotePeerId: () => "", render() {}, resetGame() {},
+  const QSeason = (extra || {}).QSeason;
+  const deps = { withSeason: (t) => (QSeason ? QSeason.decorate(t) : t), clearRematch() {}, failed: (m) => m, freshLives: () => ({}), getRemotePeerId: () => "", render() {}, resetGame() {},
     setMessage: (m) => messages.push(m), setMode() {}, setOpponentStatus() {}, setTransport() {}, setOpponentProfile() {}, stopRoomSubscription() {}, stopTimer() {} };
   const play = w.OthelloPlay.create(app, deps);
   play.sendMove(0, 2);
@@ -44,7 +45,7 @@ test("途中の手のお知らせには入れない", () => {
   const Game = w.OthelloGame;
   const app = { role: "host", myColor: "B", opponentMode: "com", transportMode: "com", localTwoPlayer: true, matchConfigured: true,
     game: Game.createFreshGame(8), rules: w.OthelloQuiz.normalizeRules({}), quizAttempts: {}, quizRetries: {}, quizLives: {}, rematch: {} };
-  const play = w.OthelloPlay.create(app, { stopTimer() {}, setMessage: (m) => messages.push(m), render() {} });
+  const play = w.OthelloPlay.create(app, { stopTimer() {}, setMessage: (m) => messages.push(m), render() {}, withSeason: (t) => t + " 🎃" });
   play.sendMove(2, 3);
   assert.ok(!messages.some((m) => m.includes("🎃")));
 });
@@ -59,6 +60,8 @@ test("招待・結果を送ったお知らせに、季節の絵文字", async ()
   });
   const result = await w.OthelloPlatform.shareResult({ outcome: "win", myName: "a", opponentName: "b", mine: 40, theirs: 24 });
   assert.strictEqual(result.message, "結果を送りました。 🎃");
-  const cancelled = await w.OthelloPlatform.shareResult.call(null, { outcome: "win", myName: "a", opponentName: "b", mine: 1, theirs: 2 });
-  assert.ok(cancelled.message);
+  // やめたときのお知らせには付けない
+  w.liff.shareTargetPicker = () => Promise.resolve(undefined);
+  const cancelled = await w.OthelloPlatform.shareResult({ outcome: "win", myName: "a", opponentName: "b", mine: 1, theirs: 2 });
+  assert.strictEqual(cancelled.message, "送るのをやめました。");
 });

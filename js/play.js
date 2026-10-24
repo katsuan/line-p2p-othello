@@ -756,11 +756,6 @@
       deps.setMessage("相手とつながりました。色を決めて、2人とも START を押してね。");
     }
 
-    // 季節の絵文字（Q キットの season.js。まだ読めていなければ付けない）。うれしい瞬間の短い文だけに
-    function withSeason(text) {
-      return window.QSeason && typeof window.QSeason.decorate === "function" ? window.QSeason.decorate(text) : text;
-    }
-
     function makeMove(row, col, color, source, version) {
       var expectedVersion = app.game.version + 1;
       var message;
@@ -788,7 +783,7 @@
       }
       app.resultOverlayDismissed = false;
       // 対局が終わったひとことにだけ季節の絵文字（盤面の記録 game.message には入れない）
-      deps.setMessage(app.game.winner ? withSeason(message) : message);
+      deps.setMessage(app.game.winner && deps.withSeason ? deps.withSeason(message) : message);
       maybeScheduleComTurn();
       return true;
     }
