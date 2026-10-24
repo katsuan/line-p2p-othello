@@ -344,9 +344,9 @@
     box.innerHTML =
       '<div class="ls-sheet-card outside-choice-card">' +
       '<img src="' + getAssetUrl("assets/icon.svg") + '" alt="" width="56" height="56">' +
-      '<p id="outsideChoiceTitle" class="ls-sheet-title">LINE の外で開いています</p>' +
-      '<p class="ls-hint outside-choice-text">友だちとの対戦は、LINE で開くかログインすると遊べます。COM との練習は、このまま遊べます。</p>' +
-      '<a class="ls-outside-button is-app outside-choice-button" data-act="app">💬 LINE アプリで開く</a>' +
+      '<p id="outsideChoiceTitle" class="ls-sheet-title">ブラウザ版で開いています</p>' +
+      '<p class="ls-hint outside-choice-text">友だちとの対戦は、下のどちらかで遊べます。COM との練習は、このまま遊べます。</p>' +
+      '<a class="ls-outside-button is-app outside-choice-button" data-act="app">💬 LINE 版で開く</a>' +
       '<button class="ls-outside-button outside-choice-button" type="button" data-act="login">🔑 ログインして遊ぶ</button>' +
       '<button class="ls-sheet-cancel" type="button" data-act="guest">🤖 ログインせずに練習する</button>' +
       "</div>";
@@ -468,10 +468,10 @@
         if (window.console) {
           window.console.warn("[ひっくり] 結果を送れませんでした", error);
         }
-        return copyInstead(text, "LINE で送れなかったので、結果をコピーしました。", "結果を長押ししてコピーしてね");
+        return copyInstead(text, "送れなかったので、結果をコピーしました。", "結果を長押ししてコピーしてね");
       });
     }
-    return copyInstead(text, "LINE の外なので、結果をコピーしました。トークに貼って送れます。", "結果を長押ししてコピーしてね");
+    return copyInstead(text, "ブラウザ版なので、結果をコピーしました。トークに貼って送れます。", "結果を長押ししてコピーしてね");
   }
 
   function shareRoom(roomId, url) {
@@ -488,11 +488,11 @@
           if (window.console) {
             window.console.warn("[ひっくり] 招待を送れませんでした", error);
           }
-          return copyInstead(shareUrl, "LINE で送れなかったので、招待のリンクをコピーしました。", "招待のリンクを長押ししてコピーしてね");
+          return copyInstead(shareUrl, "送れなかったので、招待のリンクをコピーしました。", "招待のリンクを長押ししてコピーしてね");
         });
       }
 
-      return copyInstead(shareUrl, "LINE の外なので、招待のリンクをコピーしました。トークに貼って送れます。", "招待のリンクを長押ししてコピーしてね");
+      return copyInstead(shareUrl, "ブラウザ版なので、招待のリンクをコピーしました。トークに貼って送れます。", "招待のリンクを長押ししてコピーしてね");
     });
   }
 

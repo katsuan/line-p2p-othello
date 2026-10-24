@@ -383,7 +383,7 @@
         title: app.hostTransferred ? "このルームを引き継ぎました。" : "友だちの参加を待っています。",
         hint: app.hostTransferred ?
           "友だちの参加を待つか、COM に切り替えて続けられます。" :
-          "LINEで招待を送ると、このルームに参加できます。",
+          "招待を送ると、このルームに参加できます。",
         toolsSummary: "別のルームに参加 / 新しい対局",
         joinLabel: "別のルームに参加",
         newRoomLabel: "別の対局を作る",

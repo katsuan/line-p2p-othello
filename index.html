@@ -27,8 +27,8 @@
   <meta name="twitter:card" content="summary_large_image">
   <!-- Q キット（おくるんの共通部品）。色と字は css/styles.css の :root で、ひっくりの緑に -->
   <link rel="stylesheet" href="https://katsuan.github.io/line-share/shared/ui.css">
-  <link rel="stylesheet" href="css/styles.css?v=202610241359">
-  <link rel="stylesheet" href="css/board.css?v=202610241359">
+  <link rel="stylesheet" href="css/styles.css?v=202610241429">
+  <link rel="stylesheet" href="css/board.css?v=202610241429">
 </head>
 <body class="boot-loading">
   <p class="boot-note" aria-live="polite">準備しています…</p>
@@ -49,7 +49,7 @@
             <span id="roomStateLabel" class="room-state-label">はじめる</span>
             <span id="roomStateTitle" class="room-state-title">だれと遊びますか？</span>
           </div>
-          <div id="roomStateHint" class="room-state-hint">友だちとはLINEで招待して対戦します。ひとりならCOMとすぐ練習できます。</div>
+          <div id="roomStateHint" class="room-state-hint">友だちとは招待して対戦します。ひとりならCOMとすぐ練習できます。</div>
           <!-- ルームがないときの主な2つの始め方。ルームIDでの参加は下の折りたたみ（補助的な操作） -->
           <div id="startChoices" class="start-choices">
             <button id="newFriendRoomButton" class="ls-button is-primary start-choice" type="button">
@@ -255,7 +255,7 @@
                 <button id="resultSecondaryButton" class="ls-button" type="button">閉じる</button>
               </div>
               <!-- 対局の結果を、招待カードと同じ緑のカードで LINE に送る（js/platform.js の shareResult） -->
-              <button id="resultShareButton" class="ls-button result-share-button" type="button">💬 結果をLINEで送る</button>
+              <button id="resultShareButton" class="ls-button line result-share-button" type="button">💬 カードで送る</button>
             </div>
           </div>
         </div>
@@ -307,19 +307,19 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-  <script src="js/version.js?v=202610241359"></script>
-  <script src="js/firebase.js?v=202610241359"></script>
-  <script src="js/webrtc.js?v=202610241359"></script>
-  <script src="js/game.js?v=202610241359"></script>
-  <script src="js/quiz.js?v=202610241359"></script>
-  <script src="js/peer-guard.js?v=202610241359"></script>
-  <script src="js/tex.js?v=202610241359"></script>
-  <script src="js/platform.js?v=202610241359"></script>
-  <script src="js/matchmaking.js?v=202610241359"></script>
-  <script src="js/ui.js?v=202610241359"></script>
-  <script src="js/play.js?v=202610241359"></script>
-  <script src="js/session.js?v=202610241359"></script>
-  <script src="js/main.js?v=202610241359"></script>
+  <script src="js/version.js?v=202610241429"></script>
+  <script src="js/firebase.js?v=202610241429"></script>
+  <script src="js/webrtc.js?v=202610241429"></script>
+  <script src="js/game.js?v=202610241429"></script>
+  <script src="js/quiz.js?v=202610241429"></script>
+  <script src="js/peer-guard.js?v=202610241429"></script>
+  <script src="js/tex.js?v=202610241429"></script>
+  <script src="js/platform.js?v=202610241429"></script>
+  <script src="js/matchmaking.js?v=202610241429"></script>
+  <script src="js/ui.js?v=202610241429"></script>
+  <script src="js/play.js?v=202610241429"></script>
+  <script src="js/session.js?v=202610241429"></script>
+  <script src="js/main.js?v=202610241429"></script>
   <script src="https://katsuan.github.io/line-share/shared/ui.js" defer></script>
   <script src="https://katsuan.github.io/line-share/shared/tool-share.js" data-tool="hiqri" defer></script>
 <!-- 電波がなくても開けるように（sw.js） -->
