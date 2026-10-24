@@ -1061,11 +1061,3 @@
   display: flex;
   margin: 10px auto 0;
 }
-
-
-/* 送るボタンは LINE の緑（Q の決まり F1。LINE とわかるのは色にまかせる） */
-.ls-button.line {
-  background: #06c755;
-  border-color: #06c755;
-  color: #fff;
-}
