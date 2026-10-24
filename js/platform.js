@@ -126,7 +126,7 @@
       }).then(function () {
         if (!liff.isLoggedIn()) {
           if (typeof liff.login === "function") {
-            // LINE の外（ブラウザ）では、黙ってログイン画面へ飛ばさず、ログインするか LINE アプリで開くかを選んでもらう
+            // ブラウザ版では、黙ってログイン画面へ飛ばさず、ログインするか LINE 版で開くかを選んでもらう
             if (typeof liff.isInClient === "function" && !liff.isInClient()) {
               showOutsideChoice(function () {
                 resolve({ userId: getStableDebugUserId(), displayName: "ゲスト", pictureUrl: "", guest: true });
@@ -332,8 +332,8 @@
     };
   }
 
-  // LINE の外で開いたとき：「LINE アプリで開く」「ログインして遊ぶ」か、ログインせずに COM・1台で2人で遊ぶかを選ぶ（キロっく・おくるんと同じ考え方）。
-  // LINE アプリで開くときは、招待されたルーム（?room=）もそのまま持っていく
+  // ブラウザ版で開いたとき：「LINE 版で開く」「ログインして遊ぶ」か、ログインせずに COM・1台で2人で遊ぶかを選ぶ（キロっく・おくるんと同じ考え方）。
+  // LINE 版で開くときは、招待されたルーム（?room=）もそのまま持っていく
   function showOutsideChoice(playAsGuest) {
     var appUrl = "https://liff.line.me/" + window.APP_CONFIG.liffId + window.location.search;
     var box = document.createElement("div");

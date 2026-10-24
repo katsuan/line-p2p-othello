@@ -266,7 +266,7 @@ body.is-lobby .board-shell {
   opacity: 0.85;
 }
 
-/* LINE の外で開いたときの、ログインするか LINE アプリで開くかを選ぶ画面（js/platform.js の showOutsideChoice） */
+/* ブラウザ版で開いたときの、ログインするか LINE 版で開くかを選ぶ画面（js/platform.js の showOutsideChoice） */
 .outside-choice {
   z-index: 1000;
   align-items: center;
