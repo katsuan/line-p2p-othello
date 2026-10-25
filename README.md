@@ -12,11 +12,15 @@ LIFF、Firebase Firestore、PeerJS を使った 2 人対戦オセロです。
 ## ディレクトリ構成
 
 - `index.html`
-  - 静的エントリポイント
+  - 画面
+- `app.js`
+  - 画面の入口（使い方の案内を出し、問題を読んでから始める）
+- `style.css`
+  - 見た目の入口（`css/page.css`・`css/board.css` を読む）
 - `css/`
   - 画面全体と盤面まわりのスタイル
 - `js/`
-  - アプリ本体の JavaScript
+  - 役わりごとの部品
 - `version.json`
   - 版バッジ用の最新バージョン情報
 - `firestore.rules`
@@ -32,7 +36,7 @@ LIFF、Firebase Firestore、PeerJS を使った 2 人対戦オセロです。
 
 ## 遊び方
 
-- 👥 友だちと対戦：LINE で招待して、それぞれの端末で通信対戦します。招待カード（`js/platform.js` の `buildFlexInviteMessage`）は、ロゴと同じ盤の緑のヘッダー、ロゴ入りの画像（`assets/ogp.png`）、ルームIDの枠の右にピル形の「📋 コピー」、緑の「このルームに参加」
+- 👥 友だちと対戦：LINE で招待して、それぞれの端末で通信対戦します。招待カード（`js/card.js` の `invite`）は、ロゴと同じ盤の緑のヘッダー、ロゴ入りの画像（`assets/ogp.png`）、ルームIDの枠の右にピル形の「📋 コピー」、緑の「このルームに参加」
 - 🤖 COM と練習：この端末だけで COM と対戦します
 - 📱 1台で2人：1台の端末を交代で使って、黒の人（先手）と白の人（後手）で対戦します。色の入れ替えはありません
 - 盤面の上のカードは、どのモードでも先手（黒）を左、後手（白）を右に並べます
@@ -108,7 +112,7 @@ LIFF、Firebase Firestore、PeerJS を使った 2 人対戦オセロです。
 
 ## JavaScript の責務
 
-- `js/main.js`
+- `app.js`（ページの直下）
   - 起動処理
 - `js/session.js`
   - 画面状態、ルーム遷移、初期化
@@ -124,6 +128,8 @@ LIFF、Firebase Firestore、PeerJS を使った 2 人対戦オセロです。
   - 教養モードの問題づくり（`questions/*.json` の読み込み・ジャンル・レベル・乱数の種）
 - `js/tex.js`
   - 数式の組版（KaTeX を必要なときだけ読み込む）
+- `js/card.js`
+  - LINE に送るカード（招待・対局の結果）
 - `js/platform.js`
   - LIFF、共有、バージョン取得、再読込
 - `js/matchmaking.js`
@@ -139,10 +145,21 @@ LIFF、Firebase Firestore、PeerJS を使った 2 人対戦オセロです。
 
 部品（見出しの行・カード・チップ・入力欄・ボタン・開閉・問題などのシート・トースト）は、おくるんの Q キット（`https://katsuan.github.io/line-share/shared/ui.css`・`ui.js`。使い方はおくるんの README の「Q キット」）を使います。ひっくりの CSS には、ひっくりの色と字（`:root` の `--ls-accent` など。緑 #1F7A45・濃い緑 #14542E）と、ひっくりにしかない見た目だけを置きます。
 
-- `css/styles.css`
+- `style.css`
+  - 入口。下の2つを `@import` で読む
+- `css/page.css`
   - ひっくりの色と字、全体レイアウト、トップバー（ルームの状態・始め方の3択）、ブラウザ版で開いたときの画面
 - `css/board.css`
   - 盤面・石、プレイヤーカード、対局の準備、教養モードの問題、START・結果の画面
+
+ファイルの並べ方と名前は、おくるんの `docs/structure.md` にそろえています。
+
+### 前の名前のファイル（2026-11-25 ごろ消す）
+
+LINE の中のブラウザが古い `index.html` を覚えていることがあるので、前の名前のファイルを、新しいファイルを読むだけの中身で残しています。
+
+- `js/main.js` → `js/card.js` と `app.js` を読む
+- `css/styles.css` → `css/page.css` を読む
 
 公開する前に、読み込むファイルの版（`?v=`）を `python3 ../q-oqrn/tools/qstamp.py index.html` で付け直します。
 

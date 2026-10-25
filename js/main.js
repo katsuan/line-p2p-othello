@@ -1,16 +1,14 @@
-(function (window, document) {
-  document.addEventListener("DOMContentLoaded", function () {
-    // はじめて開いた人にだけ、短い使い方（Q キット。「わかった」で消え、この端末では二度と出さない）
-    if (window.LineShareUI && typeof window.LineShareUI.firstTip === "function") {
-      window.LineShareUI.firstTip("hiqri", [
-        "置けるマスに点が出ます。押すと石が置けます",
-        "📚 教養ルールでは、問題に正解すると置けます",
-        "友だちを待つあいだは、COM と練習できます"
-      ], document.querySelector(".board-layout"));
-    }
-    // 問題（questions/*.json）を読み込んでから始める。読み込めなくても数学だけで遊べる
-    window.OthelloQuiz.load().then(function () {
-      window.OthelloSession.create().bootstrap();
-    });
-  });
-}(window, document));
+// 前の名前のファイル。入口は app.js に、送るカードは js/card.js に移した（docs: README の「前の名前のファイル」）。
+// 古い index.html を覚えている端末のために、新しいファイルを読むだけ。2026-11-25 ごろ消す
+(function (document) {
+  var base = document.currentScript ? document.currentScript.src : document.baseURI;
+  var files = (window.OthelloCard ? [] : ["card.js"]).concat(["../app.js"]);
+  (function next() {
+    var file = files.shift();
+    if (!file) return;
+    var script = document.createElement("script");
+    script.src = new URL(file, base).href;
+    script.onload = next;
+    document.head.appendChild(script);
+  }());
+}(document));

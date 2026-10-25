@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# 公開時に index.html の js/*.js・css/*.css の URL に ?v=<コミット> を付ける。
+# 公開時に index.html の app.js・style.css・js/*.js・css/*.css の URL のうち、版のないものに ?v=<コミット> を付ける。
 # LINE のアプリ内ブラウザなどが古い JS / CSS を使い続けないようにするため（リポジトリの index.html は書き換えない）。
 set -eu
 
@@ -13,8 +13,8 @@ else
 fi
 
 sed -i.bak -E \
-  -e "s#(src=\"js/[A-Za-z0-9_.-]+\.js)\"#\1?v=$VERSION\"#g" \
-  -e "s#(href=\"css/[A-Za-z0-9_.-]+\.css)\"#\1?v=$VERSION\"#g" \
+  -e "s#(src=\"(js/[A-Za-z0-9_.-]+|app)\.js)\"#\1?v=$VERSION\"#g" \
+  -e "s#(href=\"(css/[A-Za-z0-9_.-]+|style)\.css)\"#\1?v=$VERSION\"#g" \
   "$ROOT_DIR/index.html"
 rm -f "$ROOT_DIR/index.html.bak"
 

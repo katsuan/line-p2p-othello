@@ -6,7 +6,7 @@ const path = require("node:path");
 const { loadScripts } = require("./load.js");
 const { checkMessages } = require(path.join(__dirname, "../../q-oqrn/tools/qtest/fake-gas.js"));
 
-const w = loadScripts(["js/game.js", "js/platform.js"], {
+const w = loadScripts(["js/game.js", "js/card.js", "js/platform.js"], {
   location: { href: "https://katsuan.github.io/line-p2p-othello/", origin: "https://katsuan.github.io", pathname: "/line-p2p-othello/", search: "", hostname: "katsuan.github.io", protocol: "https:" },
   APP_CONFIG: { liffId: "2009927876-PcLT1IYA" },
   localStorage: { getItem: () => null, setItem() {} },
@@ -16,9 +16,9 @@ const P = w.OthelloPlatform;
 
 function cards() {
   return [
-    P.buildFlexInviteMessage("room-abc123def456", "https://liff.line.me/2009927876-PcLT1IYA?room=room-abc123def456&join=1"),
-    P.buildFlexResultMessage({ outcome: "win", myName: "わたし", opponentName: "あいて", mine: 40, theirs: 24 }),
-    P.buildFlexResultMessage({ outcome: "draw", myName: "わたし", opponentName: "あいて", mine: 32, theirs: 32 }),
+    w.OthelloCard.invite("room-abc123def456", "https://liff.line.me/2009927876-PcLT1IYA?room=room-abc123def456&join=1"),
+    w.OthelloCard.result({ outcome: "win", myName: "わたし", opponentName: "あいて", mine: 40, theirs: 24 }),
+    w.OthelloCard.result({ outcome: "draw", myName: "わたし", opponentName: "あいて", mine: 32, theirs: 32 }),
   ];
 }
 

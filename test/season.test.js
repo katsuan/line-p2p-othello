@@ -51,7 +51,7 @@ test("途中の手のお知らせには入れない", () => {
 });
 
 test("招待・結果を送ったお知らせに、季節の絵文字", async () => {
-  const w = loadScripts(["js/game.js", "js/platform.js"], {
+  const w = loadScripts(["js/game.js", "js/card.js", "js/platform.js"], {
     location: { href: "https://x/", origin: "https://x", pathname: "/", search: "", hostname: "x", protocol: "https:" },
     APP_CONFIG: { liffId: "1-a" }, localStorage: { getItem: () => null, setItem() {} },
     document: { querySelector: () => null, body: { appendChild() {}, removeChild() {} } },
