@@ -1,7 +1,9 @@
+// LINE（LIFF）とブラウザのつなぎ（OthelloPlatform）：本人・ルームの URL・招待と結果を送る・コピー・版・開きなおし。
+// session.js・ui.js から使う。送るカードの中身は js/card.js
 (function (window, document) {
   var identityPromise = null;
 
-  // 推測されにくい ID（ルーム ID など）。英小文字と数字 12 文字
+  // 推測されにくい ID（ルーム ID など。英小文字と数字12文字）
   function generateId(prefix) {
     var chars = "abcdefghijklmnopqrstuvwxyz0123456789";
     var bytes = new Uint8Array(12);
@@ -14,7 +16,7 @@
     return prefix + "-" + text;
   }
 
-  // ルームに書く本人の印：ユーザー ID の SHA-256 の先頭 32 文字（元の ID には戻せない）
+  // ルームに書く本人の印：ユーザー ID の SHA-256 の先頭32文字（元の ID には戻せない）
   function hashUserId(userId) {
     var text = "hiqri:" + String(userId || "");
     if (!window.crypto || !window.crypto.subtle || !window.TextEncoder) {
@@ -29,10 +31,12 @@
     });
   }
 
+  // PeerJS の ID に使える文字だけにする
   function sanitizeForPeer(value) {
     return String(value || "player").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 28) || "player";
   }
 
+  // URL のパスを「…/」で終わる形にそろえる
   function normalizePathname(pathname) {
     var value = pathname || "/";
     var lastSegment = value.split("/").pop();
@@ -46,10 +50,12 @@
     return value;
   }
 
+  // このページの URL（? より前）
   function getAppBaseUrl() {
     return window.location.origin + normalizePathname(window.location.pathname);
   }
 
+  // ひっくりのファイルが置いてある場所（js/ の1つ上）
   function getStaticRootUrl() {
     var script =
       document.querySelector('script[src*="/js/platform.js"]') ||
@@ -63,10 +69,12 @@
     return getAppBaseUrl();
   }
 
+  // ひっくりのファイル（画像・version.json など）の URL
   function getAssetUrl(filename) {
     return String(new URL(filename, getStaticRootUrl()));
   }
 
+  // 手元で試しているか（file:・localhost など）
   function isLocalPreviewEnvironment() {
     var hostname = String(window.location.hostname || "").toLowerCase();
     var params = new URLSearchParams(window.location.search);
@@ -78,6 +86,7 @@
       params.get("vscode-livepreview") === "true";
   }
 
+  // そのルームを LINE 版で開く URL（LIFF ID がなければ空）
   function buildLiffRoomUrl(roomId) {
     if (!window.APP_CONFIG || !window.APP_CONFIG.liffId || window.APP_CONFIG.liffId === "YOUR_LIFF_ID" || !roomId) {
       return "";
@@ -85,6 +94,7 @@
     return "https://liff.line.me/" + window.APP_CONFIG.liffId + "?room=" + encodeURIComponent(roomId);
   }
 
+  // 手元で試すときの仮の ID（この端末に残して、毎回同じにする）
   function getStableDebugUserId() {
     var storageKey = "liff-p2p-debug-user-id";
     var existingId = "";
@@ -102,6 +112,7 @@
     return existingId;
   }
 
+  // 本人（userId・名前・アイコン）を決めて返す。LINE 版なら LIFF から、ブラウザ版ならログインするか選んでもらう。1回だけ動く
   function initIdentity() {
     if (identityPromise) {
       return identityPromise;
@@ -165,6 +176,7 @@
     return identityPromise;
   }
 
+  // 公開中の版（version.json）を読む。読めなければ空
   function loadVersionInfo() {
     return fetch(getAssetUrl("version.json") + "?t=" + Date.now(), {
       cache: "no-store"
@@ -183,6 +195,7 @@
     });
   }
 
+  // 文字をコピーする。できたら true
   function copyText(text) {
     var textarea;
 
@@ -210,6 +223,7 @@
     return Promise.resolve(true);
   }
 
+  // 招待に入れるルームの URL（LINE 版の URL があればそれ）
   function buildShareUrl(roomId, url) {
     var directLiffUrl = buildLiffRoomUrl(roomId);
 
@@ -307,6 +321,7 @@
     return window.QSeason && typeof window.QSeason.decorate === "function" ? window.QSeason.decorate(text) : text;
   }
 
+  // 対局の結果をカードで送る（ブラウザ版・送れないときはコピー）。返すもの：{ status, message }
   function shareResult(info) {
     var text = "ひっくりの結果：" + info.myName + " " + info.mine + " - " + info.theirs + " " + info.opponentName;
     if (canPickTarget()) {
@@ -322,6 +337,7 @@
     return copyInstead(text, "ブラウザ版なので、結果をコピーしました。トークに貼って送れます。", "結果を長押ししてコピーしてね");
   }
 
+  // 招待をカードで送る（ブラウザ版・送れないときはリンクをコピー）。返すもの：{ status, message }
   function shareRoom(roomId, url) {
     return buildShareUrl(roomId, url).then(function (shareUrl) {
       if (canPickTarget()) {
@@ -344,6 +360,7 @@
     });
   }
 
+  // この端末に残したひっくりの記録を消す（開きなおすとき）
   function clearAppStorage() {
     var index;
     var key;
@@ -366,6 +383,7 @@
     } catch (error2) {}
   }
 
+  // URL を開きなおす（clearStorage なら記録を消してから）
   function reload(url, clearStorage) {
     if (clearStorage) {
       clearAppStorage();

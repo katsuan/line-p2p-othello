@@ -1,3 +1,5 @@
+// 画面の状態とルーム（OthelloSession）：本人を決め、ルームに入り（ホスト・ゲスト）、相手とつなぎ、ボタンを対局の処理につなぐ。
+// この端末に対局の続きを残し、開きなおしたら戻す。app.js が create().bootstrap() で始める。対局の進め方は play.js、描くのは ui.js
 (function (window) {
   var Game = window.OthelloGame;
   var Platform = window.OthelloPlatform;
@@ -5,6 +7,7 @@
   var P2P_TIMEOUT_MS = 5000;
   var LOBBY_ROOM_ID = "lobby";
 
+  // ルームの URL（join なら「参加する」しるしつき）
   function buildPageUrl(roomId, joinRequested) {
     var baseUrl = Platform.getAppBaseUrl();
     var currentParams = new URLSearchParams(window.location.search);
@@ -26,6 +29,7 @@
 
   var WATCH_STORAGE_KEY = "othello:watch-opponent";
 
+  // 相手が答える問題を見るか（この端末の設定。はじめは見る）
   function loadWatchOpponent() {
     try {
       return window.localStorage.getItem(WATCH_STORAGE_KEY) !== "0";
@@ -34,12 +38,14 @@
     }
   }
 
+  // 相手が答える問題を見るかを残す
   function saveWatchOpponent(value) {
     try {
       window.localStorage.setItem(WATCH_STORAGE_KEY, value ? "1" : "0");
     } catch (error) {}
   }
 
+  // 画面の状態のはじめの形
   function createState(ui) {
     return {
       ui: ui,
@@ -109,11 +115,13 @@
     };
   }
 
+  // 画面の状態とルームの処理を作る。返すもの：{ bootstrap }
   function create() {
     var ui = window.OthelloUI.create(window.document);
     var app = createState(ui);
     var storagePrefix = "liff-p2p-session-";
 
+    // 再接続のあいだだけ、残り時間の表示を少しずつ描きなおす
     function syncReconnectTicker() {
       if (app.reconnecting) {
         if (!app.reconnectTickTimer) {
@@ -130,6 +138,7 @@
       }
     }
 
+    // 画面を描き、残り時間の時計をそろえ、この端末に続きを残す（skipPersistence なら残さない）
     function renderView(skipPersistence) {
       ui.render(app);
       syncReconnectTicker();
@@ -138,10 +147,12 @@
       }
     }
 
+    // 画面を描きなおして、続きを残す
     function render() {
       renderView(false);
     }
 
+    // 読みこみ中の表示を消す
     function finishBoot() {
       if (window.document && window.document.body) {
         window.document.body.classList.remove("boot-loading");
@@ -156,26 +167,31 @@
       return text;
     }
 
+    // 知らせの文を変えて描く
     function setMessage(text) {
       app.status.message = text;
       render();
     }
 
+    // 通信の様子の文を変えて描く
     function setTransport(text) {
       app.status.transport = text;
       render();
     }
 
+    // 相手の様子の文を変えて描く
     function setOpponentStatus(text) {
       app.status.opponent = text;
       render();
     }
 
+    // 遊び方の文を変えて描く
     function setMode(text) {
       app.status.mode = text;
       render();
     }
 
+    // app[key] の時計を止める
     function stopTimer(key) {
       if (app[key]) {
         window.clearTimeout(app[key]);
@@ -183,6 +199,7 @@
       }
     }
 
+    // ルームの見張りをやめる
     function stopRoomSubscription() {
       if (app.roomUnsubscribe) {
         app.roomUnsubscribe();
@@ -190,20 +207,24 @@
       }
     }
 
+    // 再戦のお願い・返事待ちを消す
     function clearRematch() {
       stopTimer("rematchTimer");
       app.rematch.outgoing = false;
       app.rematch.incoming = false;
     }
 
+    // 「相手が戻ってきた」ときの状態を消す（play.js）
     function clearResumeState() {
       play.clearResumeState();
     }
 
+    // 2人の START の準備OKを消す（play.js）
     function clearStartReady() {
       play.clearStartReady();
     }
 
+    // はじめのライフ（黒と白）
     function freshLives() {
       var lives = {};
       lives[Game.BLACK] = app.rules.lives || 0;
@@ -211,6 +232,7 @@
       return lives;
     }
 
+    // 盤と問題の記録を新しくする
     function resetGame() {
       app.game = Game.createFreshGame(app.rules.size);
       app.quizAttempts = {};
@@ -223,12 +245,14 @@
       render();
     }
 
+    // 相手の名前とアイコンを変える（なければ「参加待ち」）
     function setOpponentProfile(name, pictureUrl) {
       app.opponentDisplayName = name || "参加待ち";
       app.opponentPictureUrl = pictureUrl || "";
       render();
     }
 
+    // 開いているルームを変える（URL も合わせて変える。skipHistory なら URL はそのまま）
     function updateRoomContext(roomId, joinRequested, skipHistory) {
       app.roomId = roomId || "";
       app.joinRequested = !!joinRequested;
@@ -239,10 +263,12 @@
       render();
     }
 
+    // この端末に続きを残すときのキー（ルームごと）
     function getStorageKey() {
       return storagePrefix + app.roomId;
     }
 
+    // この端末に対局の続きを残す（役わりが決まってから）
     function saveLocalState() {
       var payload;
 
@@ -276,6 +302,7 @@
       } catch (error) {}
     }
 
+    // この端末に残した続きを戻す（同じ人・同じ役わりのときだけ）。戻せたら true
     function restoreLocalState() {
       var raw;
       var saved;
@@ -318,16 +345,19 @@
       return true;
     }
 
+    // 相手の通信の ID（ルームに書かれたもの）
     function getRemotePeerId() {
       return Matchmaking.getRemotePeerId(app.roomData, app.role);
     }
 
+    // 自分の通信の ID（本人の印とルームから作る）
     function buildPeerId() {
       var userPart = Platform.sanitizeForPeer(app.userId).slice(0, 16);
       var roomPart = Platform.sanitizeForPeer(app.roomId || LOBBY_ROOM_ID).slice(-10);
       return userPart + "-" + roomPart;
     }
 
+    // URL から、開くルーム・参加か・はじめの遊び方（COM・1台で2人）を読む
     function prepareRoomContext() {
       var params = new URLSearchParams(window.location.search);
       // 「COMと練習」から来たときは、ルームを開いたあと COM 対戦を選んだ状態にする（URL からはすぐ消える）
@@ -338,10 +368,12 @@
       updateRoomContext(window.OthelloPeerGuard.isRoomId(roomParam) ? roomParam : "", params.get("join") === "1", true);
     }
 
+    // 今のルームに合わせて URL を書きかえる（ページは開きなおさない）
     function syncBrowserUrl() {
       window.history.replaceState({}, "", buildPageUrl(app.roomId, app.joinRequested));
     }
 
+    // 「再接続」：再接続中ならもう一度試す、そうでなければ同じルームを開きなおす
     function reconnectCurrentRoom() {
       if (!app.roomId) {
         setMessage("先にルームを開いてから再接続してください。");
@@ -355,6 +387,7 @@
       Platform.reload(buildPageUrl(app.roomId, app.joinRequested), true);
     }
 
+    // 対局のとちゅうか（始めた・1手でも打った・まだ終わっていない）
     function isActiveMatch() {
       return !app.game.winner && (app.matchConfigured || !!app.game.lastMove);
     }
@@ -390,6 +423,7 @@
       subscribeToRoom();
     }
 
+    // ゲストがルームを引き継いだ：自分をホストにする
     function applyPromotedHostRoom() {
       app.role = "host";
       app.joinRequested = false;
@@ -400,6 +434,7 @@
       syncBrowserUrl();
     }
 
+    // ホストが戻らないとき、ゲストがルームを引き継ぐ（対局中なら COM で続ける）。引き継げたら true
     function promoteCurrentGuestToHost(reason) {
       var activeMatch = isActiveMatch();
       var nextHostColor = app.myColor || app.currentHostColor || app.desiredHostColor || Game.BLACK;
@@ -433,6 +468,7 @@
       });
     }
 
+    // 相手が戻らないとき、ホストは相手の席を空けて待ちに戻す（対局前だけ）。戻せたら true
     function reopenHostWaitingRoom(reason) {
       if (app.role !== "host" || app.opponentMode === "com" || !app.roomId || isActiveMatch()) {
         return Promise.resolve(false);
@@ -456,6 +492,7 @@
       });
     }
 
+    // 再接続の時間が過ぎた：ゲストは引き継ぐ・ホストは待ちに戻す（どちらも Promise）
     function handleReconnectTimeout(reason) {
       if (app.role === "guest" && app.opponentMode === "human") {
         return promoteCurrentGuestToHost(reason);
@@ -468,6 +505,7 @@
 
     // 友だちが参加したことをホストに知らせる（画面のお知らせ・振動・短い音・タブの題名）
     var titleTimer = null;
+    // 友だちが参加したことをホストに知らせる（画面のお知らせ・振動・短い音・タブの題名）
     function notifyJoined(name) {
       var text = "🎉 " + name + "が参加しました！";
       ui.showToast(text);
@@ -506,6 +544,7 @@
           flip = !flip;
           window.document.title = flip ? "🔔 " + name + "が参加しました" : original;
         }, 1000);
+        // このタブに戻ってきたら、題名を元に戻す
         var restore = function () {
           if (!window.document.hidden) {
             window.clearInterval(titleTimer);
@@ -541,6 +580,8 @@
       withSeason: Platform.withSeason
     });
 
+    // ルームを見張り、相手が入った・出たら相手につなぎにいく。
+    // COM 対戦では見張らない（友だち待ちの練習中は、参加に気づけるよう見張る）
     function subscribeToRoom() {
       // COM 対戦ではルームを見張らない。ただし友だち待ちの練習中は、参加に気づけるよう見張り続ける
       if (app.roomUnsubscribe || !app.roomId || (app.opponentMode === "com" && !app.practiceWhileWaiting)) {
@@ -566,6 +607,7 @@
       });
     }
 
+    // ゲストが待つ時計：決まった時間つながらなければ知らせる
     function startGuestWaitTimer() {
       stopTimer("p2pTimer");
       app.p2pTimer = window.setTimeout(function () {
@@ -575,6 +617,7 @@
       }, P2P_TIMEOUT_MS);
     }
 
+    // ルームに入る（作る・ホストで戻る・ゲストで入る・戻る・満室・見つからない）
     function handleRoomEntry(roomData) {
       var entry;
 
@@ -699,6 +742,7 @@
       return Promise.resolve();
     }
 
+    // 遊び方を「友だちと対戦」に戻す（ホスト・つながる前・対局前だけ）
     function selectHumanMode() {
       if (app.role !== "host" || AppPeer.isConnected() || app.game.lastMove || app.game.winner) {
         setMessage("対戦相手の種類は、接続前かつ対局前のみ変更できます。");
@@ -723,6 +767,7 @@
       subscribeToRoom();
     }
 
+    // 遊び方を「COM と練習」か「1台で2人」（local）にする（ホスト・つながる前・対局前だけ）
     function selectComMode(local) {
       if (app.role !== "host" || AppPeer.isConnected() || app.game.lastMove || app.game.winner) {
         setMessage("対戦相手の種類は、接続前かつ対局前のみ変更できます。");
@@ -753,6 +798,7 @@
       }
     }
 
+    // ホストの色を変える（相手とつながっていれば相手にも送る）
     function handleHostColorChange(color) {
       var canSyncWithPeer = app.opponentMode === "human" &&
         AppPeer.isConnected() &&
@@ -773,6 +819,7 @@
       }
     }
 
+    // ホストの色を入れかえる（1台で2人では変えない）
     function toggleHostColor() {
       if (app.localTwoPlayer) {
         return;
@@ -780,9 +827,20 @@
       handleHostColorChange(app.desiredHostColor === Game.BLACK ? Game.WHITE : Game.BLACK);
     }
 
+    // 新しいルームを開く。opponent：com（COM と練習）・local（1台で2人）。ルームを開いたあとその遊び方を選んだ状態にする
+    function openNewRoom(opponent) {
+      var url = new URL(buildPageUrl(Platform.generateId("room"), false), window.location.href);
+      if (opponent) {
+        url.searchParams.set("opponent", opponent);
+      }
+      window.location.href = url.toString();
+    }
+
+    // 相手とつなぐ仕組み（PeerJS）を始めて、知らせを対局の処理につなぐ
     function bootstrapPeer() {
       return AppPeer.init(buildPeerId(), {
         onPeerOpen: function (peerId) { app.peerId = peerId; render(); },
+        // 相手から来た線を受けるか（ルームに書かれた相手だけ）
         acceptPeer: function (remotePeerId) {
           var expected = getRemotePeerId();
           return !expected || remotePeerId === expected;
@@ -792,6 +850,7 @@
         onData: play.handlePeerData,
         onConnectionClose: function () { play.handleLinkLost("相手との接続が切れました。"); },
         onConnectionError: function (error) { play.handleLinkLost(failed("相手との通信がうまくいきませんでした。", error)); },
+        // PeerJS のまちがい。つなぎにいった相手がまだいないだけなら知らせずに次の試しを待つ（相手が戻れば、どちらかからつながる）
         onPeerError: function (error) {
           // つなぎにいった相手がいまいないだけなら、知らせずに次の試しを待つ（相手が戻れば、どちらかからつながる）
           if (error && error.type === "peer-unavailable") {
@@ -806,9 +865,11 @@
     }
 
     return {
+      // 始める：ボタンをつなぎ、版を読み、本人を決め、通信を始めて、ルームに入る
       bootstrap: function () {
         prepareRoomContext();
         ui.bind({
+          // 盤のマスを押した：自分の番なら置く（教養モードは問題を出す）
           onBoardClick: function (event) {
             var acting = app.localTwoPlayer ? app.game.currentTurn : app.myColor;
             if (app.myColor && acting && !app.spectatorMode && !app.resumePending && app.game.currentTurn === acting && !app.game.winner) {
@@ -826,6 +887,7 @@
           onQuizText: play.answerQuizText,
           onQuizGiveUp: function () { play.answerQuiz(-1); },
           onChangeRules: play.changeRules,
+          // 入れたルーム ID のルームに参加する（形を確かめる）
           onJoinRoom: function () {
             var roomId = ui.getRoomInput();
             if (!roomId) {
@@ -842,6 +904,7 @@
               window.location.href = buildPageUrl(roomId, true);
             }
           },
+          // ルーム ID をコピーする（できなければ長押しでコピーする窓）
           onCopyRoomId: function () {
             if (!app.roomId) {
               setMessage("コピーできるルームIDがまだありません。");
@@ -856,6 +919,7 @@
             });
           },
           onQuickReconnect: reconnectCurrentRoom,
+          // 招待をカードで送る
           onShareRoom: function () {
             if (!app.roomUrl) {
               setMessage("先にルームを作成してから招待してください。");
@@ -867,24 +931,19 @@
               }
             });
           },
-          onNewRoom: function () { window.location.href = buildPageUrl(Platform.generateId("room"), false); },
-          onNewComRoom: function () {
-            var url = new URL(buildPageUrl(Platform.generateId("room"), false), window.location.href);
-            url.searchParams.set("opponent", "com");
-            window.location.href = url.toString();
-          },
-          onNewLocalRoom: function () {
-            var url = new URL(buildPageUrl(Platform.generateId("room"), false), window.location.href);
-            url.searchParams.set("opponent", "local");
-            window.location.href = url.toString();
-          },
+          onNewRoom: function () { openNewRoom(""); },
+          onNewComRoom: function () { openNewRoom("com"); },
+          onNewLocalRoom: function () { openNewRoom("local"); },
+          // 相手が答える問題を見るかを切りかえる
           onToggleWatch: function () {
             app.watchOpponent = !app.watchOpponent;
             saveWatchOpponent(app.watchOpponent);
             render();
           },
           onRetryReconnect: play.retryReconnectNow,
+          // 「最初から開きなおす」：確かめてから、この端末の記録を消して開きなおす
           onHardReload: function () {
+            // 記録を消して開きなおす
             var reopen = function () { AppPeer.disconnect(); Platform.reload(buildPageUrl(app.roomId, app.joinRequested), true); };
             // この端末に残した対局の記録を消すので、元に戻せない操作として確かめる
             if (!window.LineShareUI || typeof window.LineShareUI.ask !== "function") {
@@ -909,6 +968,7 @@
           onSelectCom: function () { selectComMode(false); },
           onSelectLocal: function () { selectComMode(true); },
           onSwapColors: toggleHostColor,
+          // 結果の大きいボタン：再戦のお願いを受ける、またはお願いする
           onResultPrimary: function () {
             if (app.rematch.incoming) {
               play.acceptRematch();
@@ -916,6 +976,7 @@
               play.requestRematch();
             }
           },
+          // 結果をカードで送る（送れたら「続けて別のトークにも送る」）
           onShareResult: function () {
             if (!app.game.winner) {
               return;
@@ -930,6 +991,7 @@
               mine: mine,
               theirs: theirs
             };
+            // 結果を送る。送れたら true
             var send = function () {
               return Platform.shareResult(info).then(function (result) {
                 if (result.message) {
@@ -945,6 +1007,7 @@
               }
             });
           },
+          // 結果の小さいボタン：再戦をことわる、または結果を閉じる
           onResultSecondary: function () {
             if (app.rematch.incoming) {
               play.rejectRematch();

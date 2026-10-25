@@ -1,5 +1,6 @@
 // ひっくりの入口：使い方の案内を出し、問題を読んでから始める
 (function (window, document) {
+  // 使い方の案内を出し（はじめての人だけ）、問題を読んでからゲームを始める
   function start() {
     // はじめて開いた人にだけ、短い使い方（Q キット。「わかった」で消え、この端末では二度と出さない）
     if (window.LineShareUI && typeof window.LineShareUI.firstTip === "function") {

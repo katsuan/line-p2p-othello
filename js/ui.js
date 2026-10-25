@@ -1,18 +1,23 @@
+// 画面を描く（OthelloUI）：ルームの様子・始め方・対局の準備・プレイヤーのカード・盤・問題・START・結果。状態（app）を見て描くだけで、状態は変えない。
+// session.js が create(document) で作り、render(app) で描きなおし、bind(handlers) でボタンをつなぐ
 (function (window, document) {
   var Game = window.OthelloGame;
 
+  // 要素の文字を変える（要素がなければ何もしない）
   function setText(element, value) {
     if (element) {
       element.textContent = value;
     }
   }
 
+  // 文字を HTML に入れても、タグとして動かない形にする
   function esc(value) {
     return String(value).replace(/[&<>"']/g, function (ch) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[ch];
     });
   }
 
+  // 要素を出す・隠す
   function setHidden(element, shouldHide) {
     if (!element) {
       return;
@@ -29,6 +34,7 @@
     element.setAttribute("aria-pressed", pressed ? "true" : "false");
   }
 
+  // 丸いアイコンに画像（LINE の画像だけ）か名前の1文字目を出す
   function setAvatar(element, name, pictureUrl) {
     if (!element) {
       return;
@@ -64,10 +70,12 @@
     boardElement.appendChild(fragment);
   }
 
+  // スマホのせまい画面か
   function isCompactMobile() {
     return window.innerWidth <= 640;
   }
 
+  // 友だちとつながっていて、まだ対局を始めていないか
   function isHumanP2PSetup(app) {
     return app.opponentMode === "human" &&
       app.transportMode === "p2p" &&
@@ -81,6 +89,7 @@
     return color === Game.WHITE ? "白の人" : "黒の人";
   }
 
+  // 自分のカードの見出し（せまい画面では短く）
   function getMyLabel(app) {
     if (app.localTwoPlayer) {
       return "先手 (黒)";
@@ -92,6 +101,7 @@
     return label;
   }
 
+  // 相手のカードの見出し
   function getOpponentLabel(app) {
     if (app.localTwoPlayer) {
       return "後手 (白)";
@@ -103,6 +113,7 @@
     return label;
   }
 
+  // 相手の名前（まだいなければ「参加待ち」）
   function getOpponentName(app) {
     if (app.staleGuest) {
       return "参加待ち";
@@ -122,6 +133,7 @@
     return "参加待ち";
   }
 
+  // 自分のカードの下の様子（手番・START 待ち・結果など）
   function getMyStatusText(app) {
     var outcome;
     var isMyTurn;
@@ -158,6 +170,7 @@
     return app.role ? "準備中" : "待機中";
   }
 
+  // 自分のつながりの様子（オンライン・再接続中など）
   function getMyPresenceText(app) {
     if (app.reconnecting) {
       return "再接続中";
@@ -174,6 +187,7 @@
     return "接続前";
   }
 
+  // 相手のつながりの様子
   function getOpponentPresenceText(app) {
     if (app.localTwoPlayer) {
       return "この端末";
@@ -214,6 +228,7 @@
     return "未参加";
   }
 
+  // 相手のカードの下の様子
   function getOpponentStatusText(app) {
     var opponentColor;
     var opponentWon;
@@ -262,6 +277,7 @@
     return app.status.opponent;
   }
 
+  // カードに石の色（黒・白）のクラスを付ける
   function setCardColorClass(element, color) {
     if (!element) {
       return;
@@ -275,6 +291,7 @@
     }
   }
 
+  // 再接続の帯の文（あと何秒）
   function getReconnectText(app) {
     var remainingMs = Math.max(0, app.reconnectDeadline - Date.now());
     var remainingSeconds = Math.max(1, Math.ceil(remainingMs / 1000));
@@ -282,6 +299,7 @@
       remainingSeconds + "秒待ち] 戻れなければ COM に切り替わります。";
   }
 
+  // 知らせの箱を出すか（再接続中や、ほかの場所で見せているときは出さない）
   function shouldShowMessageBox(app) {
     if (!app.status.message || app.reconnecting) {
       return false;
@@ -302,6 +320,7 @@
     return false;
   }
 
+  // ルームに友だちが入っているか
   function hasJoinedOpponent(app) {
     return app.opponentMode === "human" &&
       !!app.roomData &&
@@ -309,6 +328,7 @@
       !app.staleGuest;
   }
 
+  // ルームの様子の欄に出すもの（状態の札・見出し・案内・招待のボタンを出すか）
   function getRoomFlow(app) {
     var joinedOpponent = hasJoinedOpponent(app);
     var isPlaying = app.matchConfigured || !!app.game.lastMove;
@@ -442,6 +462,7 @@
     };
   }
 
+  // 結果の下のひとこと（再戦のお願い・返事待ち・もう一戦しますか）
   function getResultCaption(app) {
     if (app.rematch.incoming) {
       return "相手がもう一戦したいそうです。";
@@ -464,6 +485,7 @@
       !AppPeer.isConnected() && !app.matchConfigured && !app.game.lastMove && !app.game.winner && !app.reconnecting;
   }
 
+  // 盤の上に START を出すか
   function shouldShowStartOverlay(app) {
     if (app.game.winner || app.matchConfigured || app.reconnecting || app.resumePending || app.spectatorMode) {
       return false;
@@ -477,6 +499,7 @@
     return app.transportMode === "p2p" && (app.role === "host" || app.role === "guest");
   }
 
+  // START の下の案内
   function getStartCaption(app) {
     if (isHostWaiting(app)) {
       return "友だちが参加したらお知らせします。待つ間は COM と練習できます（練習はあとで友だちとの対戦に切り替えられます）。";
@@ -494,6 +517,7 @@
       "相手が黒です。2人とも START を押すと対局が始まります。";
   }
 
+  // 画面の部品を集めて、描く関数（render）とつなぐ関数（bind）を返す
   function create(documentRef) {
     var elements = {
       board: documentRef.getElementById("board"),
@@ -597,10 +621,12 @@
     var boardClickHandler = null;
     var renderedQuizPrompt = null;
 
+    // ルールを選ぶ札（押すと attr の値を選ぶ）
     function chip(label, value, attr) {
       return '<button class="ls-chip" type="button" aria-pressed="false" ' + attr + '="' + esc(value) + '">' + esc(label) + "</button>";
     }
 
+    // 今のルームのルールの短い説明（「8×8・📚 教養（…）」など）
     function rulesText(app) {
       var sizeText = app.rules.size + "×" + app.rules.size;
       return app.rules.mode === "quiz" ?
@@ -610,6 +636,7 @@
         "ふつう・" + sizeText;
     }
 
+    // ライフの表示（「❤️3」・「ライフなし」）
     function lifeLabel(lives) {
       return lives ? "❤️" + lives : "ライフなし";
     }
@@ -623,6 +650,7 @@
       return left ? "❤️".repeat(left) : "🤍";
     }
 
+    // 見出しの横に、残りのライフを出す
     function setLabelWithLives(element, label, lives) {
       element.textContent = label;
       if (lives) {
@@ -635,6 +663,7 @@
 
     // 回答タイムの残り秒数。表示中の問題に締め切りがあるあいだだけ数える
     var countdownTimer = null;
+    // 問題の残り時間を描く（時間の決まりがなければ隠す）
     function updateCountdown(prompt) {
       var active = !!prompt && !!prompt.deadline && prompt.chosen === null;
       setHidden(elements.quizCountdown, !(prompt && prompt.deadline));
@@ -955,6 +984,7 @@
     }
 
     var api = {
+      // ボタン・盤・入力を、session.js の処理（handlers）につなぐ
       bind: function (handlers) {
         boardClickHandler = handlers.onBoardClick;
         createBoardElements(elements.board, handlers.onBoardClick);
@@ -1047,16 +1077,19 @@
         }
       },
 
+      // 入れたルーム ID
       getRoomInput: function () {
         return String(elements.roomInput.value || "").trim();
       },
 
+      // ルーム ID の欄に今のルームを入れる（書いているときは変えない）
       setRoomInput: function (roomId) {
         if (documentRef.activeElement !== elements.roomInput) {
           elements.roomInput.value = roomId || "";
         }
       },
 
+      // 状態（app）に合わせて、画面全体を描きなおす
       render: function (app) {
         lastApp = app;
         // 対局が始まった瞬間は、準備の欄が消えて盤面が画面の外に残りやすいので、盤面まで送る

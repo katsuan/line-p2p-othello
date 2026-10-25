@@ -1,5 +1,6 @@
-// 教養モードの問題。マスごとの問題は「問題の種・マス・何回目の挑戦か」から決まるので、
-// 通信対戦でも両方の端末で同じ問題・同じ選択肢の並びになる（問題そのものは送らない）。
+// 教養モードの問題（OthelloQuiz）：ジャンルとレベル・ルールの形・問題の読みこみ・マスごとの問題・COM の正解率・入力の答え合わせ。
+// マスごとの問題は「問題の種・マス・何回目の挑戦か」から決まるので、通信対戦でも両方の端末で同じ問題になる（問題そのものは送らない）。
+// main の流れでは app.js が load を呼び、play.js・ui.js・session.js が使う
 (function (window) {
   // ジャンルとレベル。数学はその場で計算して作るので組み込み、それ以外は questions/*.json から読み込む（load）
   //   level.type: "pairs"（[問い, 答え] の組）/ "choices"（{ q, a, w: [まちがい3つ], m }）/ "math"
@@ -9,6 +10,7 @@
   ] };
   var GENRES = [MATH_GENRE];
 
+  // ジャンルを ID で探す（なければ最初のジャンル）
   function findGenre(genreId) {
     var index;
     for (index = 0; index < GENRES.length; index += 1) {
@@ -19,6 +21,7 @@
     return GENRES[0];
   }
 
+  // 選んだジャンル×レベルのレベル（なければそのジャンルの最初）
   function levelOf(pick) {
     var genre = findGenre(pick.genre);
     var found = genre.levels[0];
@@ -36,6 +39,7 @@
     return typeof value === "string" && value.trim() !== "";
   }
 
+  // questions/*.json のジャンルの形を確かめて、使える問題だけにする（だめなら null。理由はコンソールへ）
   function validateGenre(raw, fileName) {
     if (!raw || !isText(raw.id) || !isText(raw.label) || !Array.isArray(raw.levels)) {
       console.warn("問題ファイルの形式が正しくありません:", fileName);
@@ -93,6 +97,7 @@
   // questions/index.json に並んだファイルを読み込む（index.json は公開時に scripts/build-question-index.sh が作る）
   function load(baseUrl) {
     var base = baseUrl || "questions/";
+    // JSON を読む（読めなければエラー）
     var fetchJson = function (url) {
       return window.fetch(url, { cache: "no-cache" }).then(function (response) {
         if (!response.ok) {
@@ -156,6 +161,7 @@
     return genreIndex * 10 + levelIndex;
   }
 
+  // ジャンル×レベルの印「genre:level」
   function pickKey(pick) {
     return pick.genre + ":" + pick.level;
   }
@@ -197,11 +203,13 @@
   var DEFAULT_LIVES = 3;
   var DEFAULT_TIME = 0;
 
+  // 値が選べるものの中にあればその数、なければ fallback
   function pickChoice(value, choices, fallback) {
     var number = Number(value);
     return value !== undefined && value !== null && choices.indexOf(number) !== -1 ? number : fallback;
   }
 
+  // ルールを決まった形にする（足りないものは初めの値。前の形 { genre, level } も読む）
   function normalizeRules(rules) {
     var input = rules || {};
     return {
@@ -232,10 +240,12 @@
     return normalized.mode !== "quiz" || normalized.picks.length > 0;
   }
 
+  // そのジャンル×レベルを選んでいるか
   function hasPick(rules, key) {
     return rules.picks.some(function (pick) { return pickKey(pick) === key; });
   }
 
+  // レベルの名前（「中学」など）
   function levelLabelOf(pick) {
     var genre = findGenre(pick.genre);
     var label = "";
@@ -247,6 +257,7 @@
     return label;
   }
 
+  // 選んだ問題の名前（「📝 漢字（中学）」など）
   function describePick(pick) {
     var genre = findGenre(pick.genre);
     return genre.icon + " " + genre.label + "（" + levelLabelOf(pick) + "）";
@@ -282,6 +293,7 @@
     return hash >>> 0;
   }
 
+  // 種から、毎回同じ並びの乱数を出す関数を作る
   function createRandom(seed) {
     var state = seed >>> 0;
     return function () {
@@ -293,10 +305,12 @@
     };
   }
 
+  // min〜max の整数を1つ
   function randomInt(random, min, max) {
     return min + Math.floor(random() * (max - min + 1));
   }
 
+  // 並びから1つ
   function pick(random, list) {
     return list[Math.floor(random() * list.length)];
   }
@@ -335,6 +349,7 @@
   var markCache = {};
   var poolCache = {};
 
+  // 言葉ごとに、そのレベルの中でいちばん珍しい字を選ぶ（盤のマスに出す1文字）
   function distinctiveMarks(cacheKey, words) {
     if (markCache[cacheKey]) {
       return markCache[cacheKey];
@@ -376,14 +391,16 @@
     return { text: template.replace("{q}", target[0]), choices: built.choices, answer: built.answer, mark: mark };
   }
 
+  // JSON に書いた問題（choices）を、4択の形にする
   function fromAuthored(random, item) {
     var built = buildChoices(random, item.a, item.w);
     // JSON の問題も "tex"（$…$ の中が TeX）を書けば数式で組む
     return { text: item.q, tex: typeof item.tex === "string" ? item.tex : "", choices: built.choices, answer: built.answer, mark: item.m || Array.from(item.q)[0] };
   }
 
-  // ---- 数学（その場で計算するので、答えは必ず正しい） ----
+  // 分数を約分して「n/d」（分母が1なら整数）
   function fraction(numerator, denominator) {
+    // 最大公約数
     function gcd(a, b) { return b ? gcd(b, a % b) : Math.abs(a); }
     var divisor = gcd(numerator, denominator);
     var n = numerator / divisor;
@@ -392,14 +409,17 @@
     return d === 1 ? String(n) : n + "/" + d;
   }
 
+  // 正解に差を足した、まちがいの数の並び
   function numberWrongs(answer, deltas) {
     return deltas.map(function (delta) { return answer + delta; });
   }
 
+  // 符号つきの数（「+ 3」「− 3」）
   function signed(value) {
     return value < 0 ? "− " + -value : "+ " + value;
   }
 
+  // 数式（TeX）用の符号つきの数
   function signedTex(value) {
     return value < 0 ? "- " + -value : "+ " + value;
   }
@@ -498,6 +518,7 @@
     }
   };
 
+  // 数学の問題をその場で作り、4択の形にする
   function fromMath(random, level) {
     var made = (MATH[level] || MATH.e)(random);
     var built = buildChoices(random, made.answer, made.wrongs);
@@ -531,6 +552,7 @@
 
   var permutationCache = {};
 
+  // 0〜length-1 を種で並べかえた並び
   function permutation(length, seed) {
     var cacheKey = length + ":" + seed;
     if (permutationCache[cacheKey]) {
@@ -555,6 +577,7 @@
   // 数学：その組み合わせで重ならない問題を count 問、種から順に作っておく
   var mathLists = {};
 
+  // 数学：その組み合わせで重ならない問題を count 問、種から順に作っておく
   function mathList(seed, level, count) {
     var key = [seed, level, count].join(":");
     if (mathLists[key]) {
@@ -724,11 +747,13 @@
       .replace(/[\u30a1-\u30f6]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 0x60); });
   }
 
+  // 入力した答えが合っているか（全角半角・ひらがなカタカナ・空白のゆれは同じとみなす）
   function checkInput(question, text) {
     var typed = normalizeAnswer(text);
     return typed !== "" && typed === normalizeAnswer(question.choices[question.answer]);
   }
 
+  // 新しい問題の種
   function newSeed() {
     return (Math.floor(Math.random() * 4294967295) >>> 0) || 1;
   }

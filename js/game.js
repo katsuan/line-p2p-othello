@@ -1,3 +1,5 @@
+// 盤のゲームの決まり（OthelloGame）：盤を作る・置けるマス・ひっくり返す・手番・終わりと勝ち負け。画面にも通信にも触らない。
+// play.js・ui.js・peer-guard.js などから使う。node のテストでも動く
 (function (window) {
   // 盤面の大きさの初期値。教養モードでは 6 / 8 から選べる（最初の4つの石を中央に置くため偶数のみ）
   var BOARD_SIZE = 8;
@@ -5,23 +7,27 @@
   var BLACK = "B";
   var WHITE = "W";
 
+  // 相手の色（黒なら白）
   function getOpponent(color) {
     return color === BLACK ? WHITE : BLACK;
   }
 
+  // 色の名前（「黒」「白」）
   function colorName(color) {
     return color === BLACK ? "黒" : "白";
   }
 
+  // 盤の大きさを 6 か 8 にする（ほかは 8）
   function normalizeSize(size) {
     return BOARD_SIZES.indexOf(Number(size)) !== -1 ? Number(size) : BOARD_SIZE;
   }
 
-  // 盤面の大きさは配列の長さで決まる（どの関数も固定の 8 を使わない）
+  // 盤の大きさ（配列の長さで決まる。どの関数も決まった 8 を使わない）
   function sizeOf(board) {
     return board && board.length ? board.length : BOARD_SIZE;
   }
 
+  // はじめの盤（まん中に白黒2つずつ）
   function createInitialBoard(size) {
     var boardSize = normalizeSize(size);
     var mid = boardSize / 2;
@@ -43,6 +49,7 @@
     return board;
   }
 
+  // 新しい対局（はじめの盤・黒の番・版 0）
   function createFreshGame(size) {
     return {
       board: createInitialBoard(size),
@@ -54,6 +61,7 @@
     };
   }
 
+  // 盤を送れる形（"..BW...." の文字の並び）にする
   function serializeBoard(board) {
     var rows = [];
     var row;
@@ -71,6 +79,7 @@
     return rows;
   }
 
+  // 送られてきた文字の並びを盤に戻す
   function deserializeBoard(rows) {
     var boardSize = normalizeSize(rows && rows.length);
     var board = [];
@@ -89,10 +98,12 @@
     return board;
   }
 
+  // そのマスが盤の中か
   function isOnBoard(board, row, col) {
     return row >= 0 && row < sizeOf(board) && col >= 0 && col < sizeOf(board);
   }
 
+  // その色がそのマスに置いたら、ひっくり返る石の並び（置けなければ空）
   function getFlips(board, row, col, color) {
     var opponent = getOpponent(color);
     var directions = [
@@ -133,6 +144,7 @@
     return flips;
   }
 
+  // その色が置けるマスを全部（ひっくり返る石つき）
   function getValidMoves(board, color) {
     var moves = [];
     var row;
@@ -155,6 +167,7 @@
     return moves;
   }
 
+  // 置けるマスを「行-列」で引ける形にする
   function getMoveMap(validMoves) {
     var output = {};
     var index;
@@ -168,6 +181,7 @@
     return output;
   }
 
+  // 黒と白の石の数
   function countDiscs(board) {
     var black = 0;
     var white = 0;
@@ -187,6 +201,7 @@
     return { black: black, white: white };
   }
 
+  // 石を置いてひっくり返す。置けなければ false
   function applyMove(board, row, col, color) {
     var flips = getFlips(board, row, col, color);
     var index;
@@ -203,6 +218,7 @@
     return true;
   }
 
+  // 置いたあとの手番を決める（相手が置けなければもう一度・どちらも置けなければ終わりと勝ち負け）。返すもの：知らせる文
   function resolveTurnAfterMove(game, lastColor) {
     var nextColor = getOpponent(lastColor);
     var nextMoves = getValidMoves(game.board, nextColor);
@@ -232,6 +248,7 @@
     return "ゲーム終了。 " + game.winner + "の勝ちです。スコアは " + counts.black + "対" + counts.white + " です。";
   }
 
+  // その色から見た結果（win・lose・draw。まだ終わっていなければ空）
   function outcomeForColor(winner, color) {
     if (!winner) {
       return "";
@@ -242,8 +259,7 @@
     return colorName(color) === winner ? "win" : "lose";
   }
 
-  // 教養モードで問題に答えられなかったとき：石は置かず、手番を相手に渡す
-  //   相手が置けなければ、そのままもう一度自分の番（通常の「置けない時はパス」と同じ考え方）
+  // 教養モードで問題に答えられなかったとき：石は置かず、手番を相手に（相手が置けなければもう一度自分）。返すもの：知らせる文
   function passTurnAfterMiss(game, color) {
     var nextColor = getOpponent(color);
     if (getValidMoves(game.board, nextColor).length) {

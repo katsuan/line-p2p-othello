@@ -1,3 +1,5 @@
+// 相手の端末と直接つなぐ（AppPeer。PeerJS）：つなぐ・送る・受ける・切れたら知らせる。合図の線が切れたらつなぎなおす。
+// session.js が init で始め、play.js が send で手を送る
 (function (window) {
   window.APP_CONFIG = window.APP_CONFIG || {};
 
@@ -11,6 +13,7 @@
     debug: 1
   };
 
+  // PeerJS の設定（自分のサーバーを使うときは host など）
   function buildPeerOptions() {
     var config = window.APP_CONFIG.peer || {};
     var options = {
@@ -27,6 +30,7 @@
     return options;
   }
 
+  // 1本の線に、開いた・届いた・閉じた・まちがいの知らせをつなぐ（古い線が閉じても今の線は消さない）
   function attachConnectionHandlers(state, conn) {
     conn.on("open", function () {
       state.connection = conn;
@@ -66,6 +70,7 @@
       handlers: {}
     },
 
+    // 自分の ID で PeerJS を始める。相手からの線を受けるときは、ルームに書かれた相手だけ通す。返すもの：開いたら終わる Promise
     init: function (peerId, handlers) {
       var self = this;
 
@@ -125,6 +130,7 @@
       });
     },
 
+    // 相手の ID へ線をつなぐ（もうつながっていればその線を返す）
     connectTo: function (peerId) {
       if (!this.state.peer) {
         throw new Error("Peer が初期化されていません。");
@@ -143,6 +149,7 @@
       return conn;
     },
 
+    // 相手に送る。線が開いていなければエラー
     send: function (payload) {
       if (!this.state.connection || !this.state.connection.open) {
         throw new Error("P2P 接続がまだ開いていません。");
@@ -151,6 +158,7 @@
       this.state.connection.send(payload);
     },
 
+    // 相手との線を閉じる
     disconnect: function () {
       if (this.state.connection) {
         this.state.connection.close();
@@ -158,6 +166,7 @@
       }
     },
 
+    // 相手との線が開いているか
     isConnected: function () {
       return !!(this.state.connection && this.state.connection.open);
     }

@@ -1,3 +1,5 @@
+// 相手の端末・URL から届く中身を、使う前に確かめる（OthelloPeerGuard。形・範囲・ルール）。
+// play.js・session.js・ui.js から使う。画面に触らないので node のテスト（test/peer-guard.test.js）でも動く
 (function (window) {
   // 相手の端末・URL から届く中身を、使う前に確かめる（形・範囲・ルール）。
   // 画面に触らないので node のテスト（test/peer-guard.test.js）でも動かせる
@@ -11,14 +13,17 @@
   var PICTURE_HOSTS = /^(profile|obs|sprofile)\.line-scdn\.net$/;
   var WINNERS = ["", "黒", "白", "引き分け"];
 
+  // 黒か白の印か
   function isColor(value) {
     return value === Game.BLACK || value === Game.WHITE;
   }
 
+  // 文字だけ・まぎらわしい文字を外して・長さを決めて返す（文字でなければ空）
   function cleanText(value, max) {
     return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, max) : "";
   }
 
+  // min〜max の整数なら数、ちがえば null
   function toInt(value, min, max) {
     if ((typeof value !== "number" && typeof value !== "string") || value === "") {
       return null;
@@ -30,10 +35,12 @@
     return number;
   }
 
+  // ルーム ID の形か（英数字と - _ だけ）
   function isRoomId(value) {
     return typeof value === "string" && ROOM_ID_PATTERN.test(value);
   }
 
+  // LINE のプロフィール画像の https の URL だけ通す（ほかは空）
   function cleanPictureUrl(value) {
     if (typeof value !== "string" || value.length > 500) {
       return "";
@@ -46,6 +53,7 @@
     }
   }
 
+  // 相手の名前とアイコンの URL を確かめて返す
   function cleanProfile(data) {
     var input = data || {};
     return {
@@ -64,6 +72,7 @@
     });
   }
 
+  // 「行-列」がキーのものを、盤の中のマスだけ・値も確かめて返す
   function cleanCellMap(value, size, cleanValue) {
     var output = {};
     if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -82,10 +91,12 @@
     return output;
   }
 
+  // そのマスで何回目の挑戦か（0〜999）
   function cleanAttempt(value) {
     return toInt(value, 0, 999);
   }
 
+  // 不正解のあとに割り当てた問題の位置の並び
   function cleanRetryList(value) {
     if (!Array.isArray(value)) {
       return null;
@@ -94,6 +105,7 @@
     return list.indexOf(null) === -1 ? list : null;
   }
 
+  // 黒と白の残りのライフ
   function cleanLives(value) {
     var output = {};
     var input = value && typeof value === "object" ? value : {};
@@ -162,6 +174,7 @@
     return { row: row, col: col, color: data.color, version: version };
   }
 
+  // 相手が選んだ答え（-3〜9）と、入力した文字
   function cleanQuizChoice(data) {
     var chosen = toInt(data && data.chosen, -3, 9);
     if (chosen === null) {

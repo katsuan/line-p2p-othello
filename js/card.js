@@ -5,6 +5,7 @@
   var BRAND_DARK = "#14542E";
   var SITE_URL = "https://katsuan.github.io/line-p2p-othello/";
 
+  // 招待のカード：ロゴの画像・ルーム ID（コピーできる）・「このルームに参加」
   function invite(roomId, shareUrl) {
     return {
       type: "flex",
@@ -101,6 +102,7 @@
   function result(info) {
     var title = info.outcome === "win" ? "🏆 勝ちました！" : info.outcome === "lose" ? "負けました…" : "引き分け";
     var appUrl = window.APP_CONFIG && window.APP_CONFIG.liffId ? "https://liff.line.me/" + window.APP_CONFIG.liffId : SITE_URL;
+    // 結果のカードの1行（名前と石の数）
     var row = function (name, count, bold) {
       return {
         type: "box",

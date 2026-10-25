@@ -1,3 +1,5 @@
+// Firebase（Firestore）とのつなぎ（AppFirebase）：ルームの文書を読む・作る・書きかえる・見張る。LIFF ID と Firebase の設定もここ。
+// matchmaking.js から使う。守りは Firestore のルール（firestore.rules）
 (function (window) {
   window.APP_CONFIG = window.APP_CONFIG || {};
 
@@ -16,6 +18,7 @@
   var firebaseApp = null;
   var firestoreDb = null;
 
+  // Firebase の設定が入っているか
   function hasFirebaseConfig() {
     var config = window.APP_CONFIG.firebase || {};
     return config.apiKey &&
@@ -24,6 +27,7 @@
       config.projectId !== "YOUR_FIREBASE_PROJECT_ID";
   }
 
+  // Firebase をはじめて使うときに準備して、Firestore を返す
   function ensureInitialized() {
     if (!hasFirebaseConfig()) {
       throw new Error("Firebase の設定が不足しています。firebase.js の APP_CONFIG.firebase を更新してください。");
@@ -39,19 +43,23 @@
     return firestoreDb;
   }
 
+  // ルームの置き場（rooms）
   function roomsCollection() {
     return ensureInitialized().collection("rooms");
   }
 
+  // ルーム1つの文書
   function roomDoc(roomId) {
     return roomsCollection().doc(roomId);
   }
 
   var AppFirebase = {
+    // Firebase を準備する
     init: function () {
       return ensureInitialized();
     },
 
+    // ルームを読む。なければ null
     getRoom: function (roomId) {
       return roomDoc(roomId).get().then(function (snapshot) {
         if (!snapshot.exists) {
@@ -62,14 +70,17 @@
       });
     },
 
+    // ルームを作る（上書き）
     createRoom: function (roomId, payload) {
       return roomDoc(roomId).set(payload);
     },
 
+    // ルームの一部を書きかえる
     updateRoom: function (roomId, payload) {
       return roomDoc(roomId).set(payload, { merge: true });
     },
 
+    // ルームが変わるたびに onData を呼ぶ（消えたら null）。返すもの：見張りをやめる関数
     subscribeRoom: function (roomId, onData, onError) {
       return roomDoc(roomId).onSnapshot(function (snapshot) {
         if (!snapshot.exists) {

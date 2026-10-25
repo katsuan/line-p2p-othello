@@ -1,3 +1,5 @@
+// 対局の進め方（OthelloPlay）：始める・手を打つ・教養モードの問題・COM の手・相手との通信（届いた知らせ・再接続・再開）・再戦。
+// session.js が create(app, deps) で作り、ui.js のボタンから呼ばれる。盤の決まりは game.js、届いた中身の確かめは peer-guard.js
 (function (window) {
   var Game = window.OthelloGame;
   var Quiz = window.OthelloQuiz;
@@ -8,7 +10,9 @@
   var RECONNECT_HANDOFF_TIMEOUT_MS = 1800;
   var REMATCH_RESPONSE_TIMEOUT_MS = 12000;
 
+  // 対局の進め方を作る。app：画面の状態（session.js と同じもの）、deps：session.js の描く・知らせる関数
   function create(app, deps) {
+    // 再接続のための時計を止める
     function stopReconnectTimers() {
       deps.stopTimer("reconnectTimer");
       deps.stopTimer("reconnectRetryTimer");
@@ -22,6 +26,7 @@
       stopReconnectTimers();
     }
 
+    // promise が timeoutMs までに終わらなければ false で終わる Promise にする
     function withFallbackTimeout(promise, timeoutMs) {
       return new Promise(function (resolve, reject) {
         var settled = false;
@@ -51,12 +56,14 @@
       });
     }
 
+    // 「相手が戻ってきた」ときの選ぶ途中・見るだけの状態を消す
     function clearResumeState() {
       app.spectatorMode = false;
       app.resumePending = false;
       app.resumeRequesterName = "";
     }
 
+    // 2人の START の準備OKを消す
     function clearStartReady() {
       app.localStartReady = false;
       app.remoteStartReady = false;
@@ -73,6 +80,7 @@
       }
     }
 
+    // 相手に送る盤の様子（盤・手番・版・勝ち負け・ルール・問題の挑戦の記録）
     function buildStatePayload(type) {
       return {
         type: type || "state",
@@ -107,6 +115,7 @@
       return true;
     }
 
+    // ルールを入れる（盤の大きさが変わって、まだ始めていなければ盤も作りなおす）
     function applyRules(rules) {
       var next = Quiz.normalizeRules(rules);
       var sizeChanged = next.size !== Game.sizeOf(app.game.board);
@@ -116,6 +125,7 @@
       }
     }
 
+    // ホストがルールを変える（対局が終わったあとなら、相手といっしょに次の準備へ）
     function changeRules(patch) {
       if (!canEditRules()) {
         deps.setMessage("ルールは、ホストが対局を始める前だけ変えられます。");
@@ -150,6 +160,7 @@
       return app.rules.answerMode === "input" && !!question.canInput;
     }
 
+    // そのマスに今出る問題
     function currentQuestion(row, col) {
       return Quiz.questionAt(app.rules, app.quizAttempts, app.quizRetries, row, col);
     }
@@ -174,10 +185,12 @@
       return app.localTwoPlayer ? app.game.currentTurn : app.myColor;
     }
 
+    // 問題の種を新しくする（対局を始めるたびに）
     function rollQuizSeed() {
       app.rules = Quiz.normalizeRules(Object.assign({}, app.rules, { seed: Quiz.newSeed() }));
     }
 
+    // COM の番なら、少し待って COM が打つ（教養モードでは問題に答える様子も見せる）
     function maybeScheduleComTurn() {
       var moves;
       var bestMove;
@@ -256,6 +269,7 @@
       }, 300);
     }
 
+    // 色を決めて対局を始める（盤を新しくする）
     function applyMatchSettings(hostColor, isRematch) {
       app.currentHostColor = hostColor;
       app.desiredHostColor = hostColor;
@@ -269,6 +283,7 @@
       maybeScheduleComTurn();
     }
 
+    // 次の対局の準備（色を決めて START を待つ）に戻す
     function prepareRematchSetup() {
       var seededColor = app.currentHostColor || app.desiredHostColor || Game.BLACK;
 
@@ -295,6 +310,7 @@
       deps.setMessage("色を決めて、2人とも START を押すと再戦を始めます。");
     }
 
+    // 始める前の準備（色・ホストならルール）を相手に送る
     function sendSetupState() {
       if (!AppPeer.isConnected() || app.opponentMode !== "human" || app.matchConfigured) {
         return;
@@ -306,6 +322,7 @@
       }, "準備の内容を相手に届けられませんでした。");
     }
 
+    // 2人とも START したら、ホストが対局を始めて相手に知らせる
     function tryStartHumanMatch() {
       if (!AppPeer.isConnected() || app.opponentMode !== "human" || app.matchConfigured) {
         return;
@@ -326,6 +343,7 @@
       }
     }
 
+    // START：COM ならすぐ始める。友だち対戦なら準備OKを送る（まだ相手がいなければ COM と練習）
     function startMatch() {
       if (app.matchConfigured) {
         return;
@@ -363,6 +381,7 @@
       tryStartHumanMatch();
     }
 
+    // 友だちを待つあいだ、ルームを開いたまま COM と練習を始める
     function startPracticeWhileWaiting() {
       app.practiceWhileWaiting = true;
       app.opponentMode = "com";
@@ -378,6 +397,7 @@
       deps.render();
     }
 
+    // 今の盤の様子を相手に送る
     function sendStateSnapshot() {
       if (!AppPeer.isConnected() || app.opponentMode === "com") {
         return;
@@ -385,6 +405,7 @@
       AppPeer.send(buildStatePayload("state"));
     }
 
+    // 自分の名前とアイコンを相手に送る
     function sendProfile() {
       if (!AppPeer.isConnected()) {
         return;
@@ -396,6 +417,7 @@
       });
     }
 
+    // 相手につなぎにいく（返事を待っているあいだは重ねない）
     function connectToRemotePeer(peerId) {
       if (!peerId || peerId === app.pendingPeerTarget || AppPeer.isConnected()) {
         return;
@@ -405,6 +427,7 @@
       AppPeer.connectTo(peerId);
     }
 
+    // 再接続のあいだ、少しずつ間をあけて何度もつなぎにいく
     function scheduleReconnectRetry() {
       deps.stopTimer("reconnectRetryTimer");
       if (!app.reconnecting || AppPeer.isConnected() || !deps.getRemotePeerId()) {
@@ -416,6 +439,7 @@
       }, RECONNECT_RETRY_MS);
     }
 
+    // 相手とつながらないとき、相手の代わりに COM が続ける
     function switchToCom(reason) {
       endReconnect();
       clearResumeState();
@@ -434,6 +458,7 @@
       maybeScheduleComTurn();
     }
 
+    // COM で続けているところに相手が戻った（友だちが来た）：最初からか今の盤面からかを選ぶ
     function beginResumeChoice() {
       clearResumeState();
       clearStartReady();
@@ -473,6 +498,7 @@
       deps.render();
     }
 
+    // 相手から届いた盤の様子（確かめたもの）を入れる
     function applySharedState(payload) {
       app.currentHostColor = payload.hostColor || app.currentHostColor;
       app.desiredHostColor = payload.hostColor || app.desiredHostColor;
@@ -518,6 +544,7 @@
       deps.render();
     }
 
+    // 相手と盤面をそろえて、通信対戦に戻る
     function finalizeP2PResume(message) {
       clearResumeState();
       clearStartReady();
@@ -533,6 +560,7 @@
       deps.render();
     }
 
+    // 戻った相手と、今の盤面から再開する
     function resumeCurrentGame() {
       if (!app.resumePending || !AppPeer.isConnected()) {
         return;
@@ -552,6 +580,7 @@
       }
     }
 
+    // 戻った相手と、最初からやり直す
     function restartReturnedGame() {
       if (!app.resumePending || !AppPeer.isConnected()) {
         return;
@@ -573,6 +602,7 @@
       deps.render();
     }
 
+    // 選ぶ途中・見るだけのときに相手との線が切れたら、その場に合わせて戻す。戻したら true
     function handleResumeConnectionLost() {
       if (app.resumePending) {
         clearResumeState();
@@ -613,6 +643,7 @@
       app.pendingPeerTarget = "";
     }
 
+    // 相手との線が切れた：同じルームで決まった時間だけつなぎなおしを試し、だめなら待ちに戻すか COM に
     function beginReconnect(reason) {
       if (app.opponentMode === "com" || !app.roomId || app.reconnecting) {
         return;
@@ -663,6 +694,7 @@
       deps.render();
     }
 
+    // 「再試行」：つなぎなおしを今すぐもう一度
     function retryReconnectNow() {
       if (!app.reconnecting) {
         return;
@@ -673,6 +705,7 @@
       deps.setMessage("再接続をもう一度試しています。");
     }
 
+    // 相手との線が開いた：はじめての参加・開きなおし・練習中の参加など、場面に合わせて通信対戦を始める
     function startP2PPlay() {
       if (app.practiceWhileWaiting && app.role === "host") {
         if (app.matchConfigured && !app.game.winner) {
@@ -756,6 +789,7 @@
       deps.setMessage("相手とつながりました。色を決めて、2人とも START を押してね。");
     }
 
+    // 石を置く（相手から届いた手は、版と決まりを確かめる。合わなければ COM に）。置けたら true
     function makeMove(row, col, color, source, version) {
       var expectedVersion = app.game.version + 1;
       var message;
@@ -788,6 +822,7 @@
       return true;
     }
 
+    // 自分の手を置いて、通信対戦なら相手に送る
     function sendMove(row, col) {
       var nextVersion = app.game.version + 1;
       var color = actingColor();
@@ -804,6 +839,7 @@
       return row + "-" + col;
     }
 
+    // 教養モード：置けるマスを押したら、そのマスの問題を出す（時間の決まりがあれば時計も）
     function openQuiz(row, col) {
       var color = actingColor();
       var valid = Game.getMoveMap(Game.getValidMoves(app.game.board, color));
@@ -836,6 +872,7 @@
       deps.render();
     }
 
+    // 問題を開いた・答えた を相手に送る（見せるだけなので、送れなくても続ける）
     function sendQuizProgress(message) {
       if (app.transportMode !== "p2p" || !AppPeer.isConnected()) {
         return;
@@ -883,6 +920,7 @@
       answerQuiz(Quiz.checkInput(prompt.question, text) ? prompt.question.answer : TYPED_WRONG, String(text).trim().slice(0, 40));
     }
 
+    // 問題に答えた（-1 はわからない）：結果を少し見せてから、正解なら置き、ちがえば不正解の扱いに
     function answerQuiz(index, typed) {
       var prompt = app.quizPrompt;
       if (!prompt || prompt.chosen !== null) {
@@ -941,6 +979,7 @@
       return true;
     }
 
+    // 不正解を自分の盤に入れて、通信対戦なら相手に送る
     function sendMiss(row, col) {
       var nextVersion = app.game.version + 1;
       var color = actingColor();
@@ -952,6 +991,7 @@
       }
     }
 
+    // 「もう一戦する」：COM ならすぐ準備へ、友だち対戦なら相手にお願いする（返事は決まった時間まで待つ）
     function requestRematch() {
       if (app.opponentMode === "com") {
         prepareRematchSetup();
@@ -987,6 +1027,7 @@
       }
     }
 
+    // 相手の再戦のお願いを受ける（ホストなら次の準備を決める）
     function acceptRematch() {
       if (!app.rematch.incoming || !AppPeer.isConnected()) {
         return;
@@ -1004,6 +1045,7 @@
       deps.render();
     }
 
+    // 相手の再戦のお願いをことわって、結果を閉じる
     function rejectRematch() {
       deps.clearRematch();
       app.resultOverlayDismissed = true;

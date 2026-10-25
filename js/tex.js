@@ -1,3 +1,5 @@
+// 数式の組版（OthelloTex。KaTeX）：数式の問題が出たときだけ読みこみ、読めるまで・読めないときはふつうの文字で出す。
+// ui.js が問題を描くときに使う
 (function (window, document) {
   // 数式の組版（KaTeX）。数式の問題が出たときだけ読み込み、読み込めるまで・読み込めないときは普通の文字で出す
   var KATEX_VERSION = "0.16.11";
@@ -5,10 +7,12 @@
   var state = "idle"; // idle → loading → ready / failed
   var listeners = [];
 
+  // KaTeX が使えるか
   function isReady() {
     return state === "ready" && !!window.katex;
   }
 
+  // KaTeX を読みこむ（1回だけ）。読めたら描きなおしを知らせる
   function load() {
     if (state !== "idle") {
       return;
@@ -43,12 +47,14 @@
     load();
   }
 
+  // 文字を HTML に入れても、タグとして動かない形にする
   function escapeHtml(text) {
     return String(text).replace(/[&<>"']/g, function (ch) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[ch];
     });
   }
 
+  // $…$ の中を数式、外をふつうの文字にした HTML
   function toHtml(tex) {
     // $…$ の中を数式、外を普通の文字として並べる
     return String(tex).split("$").map(function (part, index) {
