@@ -1061,3 +1061,41 @@
   display: flex;
   margin: 10px auto 0;
 }
+
+/* 始める・結果のカードは明るい紙の色のまま。暗い表示でも中の字とボタンは明るいときの色に（薄い字にならないように） */
+@media (prefers-color-scheme: dark) {
+  :root[data-ls-dark="auto"] .start-card,
+  :root[data-ls-dark="auto"] .result-card {
+    --ls-text: #1d2a22;
+    --ls-subtext: #576459;
+    --ls-surface: #ffffff;
+    --ls-surface-sub: #f4efe2;
+    --ls-line: rgba(29, 42, 34, 0.1);
+    --ls-line-strong: rgba(29, 42, 34, 0.2);
+    color: var(--ls-text);
+  }
+}
+
+/* せまい画面（320px など）では、結果のカードを盤の中に収める（はみ出して下の知らせと重ならないように） */
+@media (max-width: 400px) {
+  .result-overlay {
+    padding: 8px;
+  }
+
+  .result-card {
+    gap: 8px;
+    padding: 14px 12px;
+  }
+
+  .result-word {
+    font-size: 1.9rem;
+  }
+
+  .result-caption {
+    font-size: 0.85rem;
+  }
+
+  .result-share-button {
+    margin-top: 2px;
+  }
+}

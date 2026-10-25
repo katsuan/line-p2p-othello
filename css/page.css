@@ -126,6 +126,7 @@ body.is-lobby .board-shell {
 
 .top-actions {
   display: grid;
+  grid-template-columns: minmax(0, 1fr); /* 長いルームIDでも横にはみ出さない（320px） */
   gap: 12px;
   min-width: 260px;
   min-height: 212px;
@@ -133,7 +134,9 @@ body.is-lobby .board-shell {
 
 .room-overview {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
+  min-width: 0;
 }
 
 /* 状態（はじめる / 招待中 / ひとりで …）は小さなラベルにして、見出しと同じ行に置く */
@@ -312,6 +315,10 @@ body.is-lobby .board-shell {
   .topbar {
     gap: 10px;
     padding: 14px 16px;
+  }
+
+  .top-actions {
+    min-width: 0;
   }
 
   .room-state-hint {

@@ -262,7 +262,7 @@
       '<img src="' + getAssetUrl("assets/icon.svg") + '" alt="" width="56" height="56">' +
       '<p id="outsideChoiceTitle" class="ls-sheet-title">ブラウザ版で開いています</p>' +
       '<p class="ls-hint outside-choice-text">友だちとの対戦は、下のどちらかで遊べます。COM との練習は、このまま遊べます。</p>' +
-      '<a class="ls-outside-button is-app outside-choice-button" data-act="app">💬 LINE 版で開く</a>' +
+      '<a class="ls-outside-button is-app outside-choice-button" data-act="app">📱 LINE 版で開く</a>' +
       '<button class="ls-outside-button outside-choice-button" type="button" data-act="login">🔑 ログインして遊ぶ</button>' +
       '<button class="ls-sheet-cancel" type="button" data-act="guest">🤖 ログインせずに練習する</button>' +
       "</div>";
