@@ -132,6 +132,8 @@ LIFF、Firebase Firestore、PeerJS を使った 2 人対戦オセロです。
   - LINE に送るカード（招待・対局の結果）
 - `js/platform.js`
   - LIFF、共有、バージョン取得、再読込
+- `js/me.js`
+  - 見出しのロゴの右の、本人の LINE のアイコン（Q キットの `shared/line-me.js`）。押すと、だれでログインしているか・相手に見えるもの・版のシート（ブラウザ版のゲストは、ログインの案内）
 - `js/matchmaking.js`
   - Firestore の最小利用層
 - `js/firebase.js`

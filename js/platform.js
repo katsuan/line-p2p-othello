@@ -2,6 +2,13 @@
 // session.js・ui.js から使う。送るカードの中身は js/card.js
 (function (window, document) {
   var identityPromise = null;
+  // LIFF を起こし終えた（起こせなかった・手元で試すときも）約束。見出しの本人のアイコン（js/me.js）が待つ。LIFF を2回起こさない
+  var liffDone = function () {};
+  var liffReadyPromise = new Promise(function (resolve) {
+    liffDone = resolve;
+  });
+  // ブラウザ版で、LIFF は起きたがまだログインしていない（ゲスト）か
+  var outsideGuest = false;
 
   // 推測されにくい ID（ルーム ID など。英小文字と数字12文字）
   function generateId(prefix) {
@@ -123,6 +130,7 @@
           !window.liff ||
           !window.APP_CONFIG.liffId ||
           window.APP_CONFIG.liffId === "YOUR_LIFF_ID") {
+        liffDone();
         resolve({
           userId: getStableDebugUserId(),
           displayName: "デバッグユーザー",
@@ -134,10 +142,12 @@
       liff.init({
         liffId: window.APP_CONFIG.liffId
       }).then(function () {
+        liffDone();
         if (!liff.isLoggedIn()) {
           if (typeof liff.login === "function") {
             // ブラウザ版では、黙ってログイン画面へ飛ばさず、ログインするか LINE 版で開くかを選んでもらう
             if (typeof liff.isInClient === "function" && !liff.isInClient()) {
+              outsideGuest = true;
               showOutsideChoice(function () {
                 resolve({ userId: getStableDebugUserId(), displayName: "ゲスト", pictureUrl: "", guest: true });
               });
@@ -165,6 +175,7 @@
           });
         });
       }).catch(function () {
+        liffDone();
         resolve({
           userId: getStableDebugUserId(),
           displayName: "デバッグユーザー",
@@ -250,7 +261,11 @@
 
   // ブラウザ版で開いたとき：「LINE 版で開く」「ログインして遊ぶ」か、ログインせずに COM・1台で2人で遊ぶかを選ぶ（キロっく・おくるんと同じ考え方）。
   // LINE 版で開くときは、招待されたルーム（?room=）もそのまま持っていく
+  // playAsGuest：「ログインせずに練習する」を押したとき（シートは閉じる。見出しのアイコンから開いたときは閉じるだけ）
   function showOutsideChoice(playAsGuest) {
+    if (document.querySelector(".outside-choice")) {
+      return; // もう開いている
+    }
     var appUrl = "https://liff.line.me/" + window.APP_CONFIG.liffId + window.location.search;
     var box = document.createElement("div");
     box.className = "ls-sheet outside-choice";
@@ -272,7 +287,9 @@
     });
     box.querySelector('[data-act="guest"]').addEventListener("click", function () {
       box.remove();
-      playAsGuest();
+      if (playAsGuest) {
+        playAsGuest();
+      }
     });
     document.body.appendChild(box);
   }
@@ -400,6 +417,13 @@
     getAssetUrl: getAssetUrl,
     buildLiffRoomUrl: buildLiffRoomUrl,
     initIdentity: initIdentity,
+    liffReady: function () {
+      return liffReadyPromise;
+    },
+    isOutsideGuest: function () {
+      return outsideGuest;
+    },
+    showOutsideChoice: showOutsideChoice,
     loadVersionInfo: loadVersionInfo,
     copyText: copyText,
     showCopyBox: showCopyBox,

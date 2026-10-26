@@ -124,6 +124,19 @@ body.is-lobby .board-shell {
   }
 }
 
+/* 見出しに本人のアイコンがあるとき（js/me.js）、スマホの幅では版の札を隠す（アイコンを押したシートに版を出す）。
+   札があると 375px でロゴが名前にかぶる */
+@media (max-width: 480px) {
+  .ls-brand.has-me .version-badge {
+    display: none;
+  }
+}
+
+/* アイコンのシートの頭：まだログインしていないときは、見出しと同じ灰色のふち */
+.me-sheet .qme-head.is-out .qme-avatar {
+  box-shadow: 0 0 0 2px var(--ls-surface, #fff), 0 0 0 3.5px var(--ls-line-strong, #b4bccb);
+}
+
 .top-actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr); /* 長いルームIDでも横にはみ出さない（320px） */

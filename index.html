@@ -27,7 +27,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <!-- Q キット（おくるんの共通部品）。色と字は css/styles.css の :root で、ひっくりの緑に -->
   <link rel="stylesheet" href="https://katsuan.github.io/line-share/shared/ui.css?v=202610261000">
-  <link rel="stylesheet" href="style.css?v=202610250927">
+  <link rel="stylesheet" href="style.css?v=202610261221">
 </head>
 <body class="boot-loading">
   <p class="boot-note" aria-live="polite">準備しています…</p>
@@ -306,21 +306,24 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-  <script src="js/version.js?v=202610250927"></script>
-  <script src="js/firebase.js?v=202610250927"></script>
-  <script src="js/webrtc.js?v=202610250927"></script>
-  <script src="js/game.js?v=202610250927"></script>
-  <script src="js/quiz.js?v=202610250927"></script>
-  <script src="js/peer-guard.js?v=202610250927"></script>
-  <script src="js/tex.js?v=202610250927"></script>
-  <script src="js/card.js?v=202610250927"></script>
-  <script src="js/platform.js?v=202610250927"></script>
-  <script src="js/matchmaking.js?v=202610250927"></script>
-  <script src="js/ui.js?v=202610250927"></script>
-  <script src="js/play.js?v=202610250927"></script>
-  <script src="js/session.js?v=202610250927"></script>
-  <script src="app.js?v=202610250927"></script>
+  <script src="js/version.js?v=202610261221"></script>
+  <script src="js/firebase.js?v=202610261221"></script>
+  <script src="js/webrtc.js?v=202610261221"></script>
+  <script src="js/game.js?v=202610261221"></script>
+  <script src="js/quiz.js?v=202610261221"></script>
+  <script src="js/peer-guard.js?v=202610261221"></script>
+  <script src="js/tex.js?v=202610261221"></script>
+  <script src="js/card.js?v=202610261221"></script>
+  <script src="js/platform.js?v=202610261221"></script>
+  <script src="js/matchmaking.js?v=202610261221"></script>
+  <script src="js/ui.js?v=202610261221"></script>
+  <script src="js/me.js?v=202610261221"></script>
+  <script src="js/play.js?v=202610261221"></script>
+  <script src="js/session.js?v=202610261221"></script>
+  <script src="app.js?v=202610261221"></script>
   <script src="https://katsuan.github.io/line-share/shared/ui.js" defer></script>
+  <!-- 見出しの右の本人のアイコン（つづく・しょくじ・キロっくと同じ。Q キット。window.QLineMe。app.js が DOMContentLoaded で js/me.js から使う） -->
+  <script src="https://katsuan.github.io/line-share/shared/line-me.js?v=202610262300" defer></script>
   <script src="https://katsuan.github.io/line-share/shared/tool-share.js" data-tool="hiqri" defer></script>
 <!-- 電波がなくても開けるように（sw.js） -->
 <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});</script>
