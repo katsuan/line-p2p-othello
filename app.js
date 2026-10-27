@@ -10,7 +10,7 @@
     if (window.LineShareUI && typeof window.LineShareUI.firstTip === "function") {
       window.LineShareUI.firstTip("hiqri", [
         "置けるマスに点が出ます。押すと石が置けます",
-        "📚 教養ルールでは、問題に正解すると置けます",
+        "📚 教養モードでは、問題に正解すると置けます",
         "友だちを待つあいだは、COM と練習できます"
       ], document.querySelector(".board-layout"));
     }

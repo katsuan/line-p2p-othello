@@ -639,7 +639,7 @@
         setOpponentStatus("待機中…");
         setMode("ロビー");
         setOpponentProfile("参加待ち", "");
-        setMessage("ルームIDを入力するか、新しいルームを作成してください。");
+        setMessage("遊び方を選ぶか、「ルームIDで参加」から参加できます。");
         return Promise.resolve();
       }
 
@@ -922,7 +922,7 @@
           // 招待をカードで送る
           onShareRoom: function () {
             if (!app.roomUrl) {
-              setMessage("先にルームを作成してから招待してください。");
+              setMessage("先に「👥 友だちと対戦」を押すと、招待できます。");
               return;
             }
             Platform.shareRoom(app.roomId, app.roomUrl).then(function (result) {
@@ -1013,7 +1013,10 @@
               play.rejectRematch();
             } else {
               app.resultOverlayDismissed = true;
-              setMessage("この試合を終了しました。続ける場合は新しいルームを作成するか、ページを開き直してください。");
+              // 続けかたは、結果を閉じたあとの画面にあるものだけを案内する（ホストは「対局の準備」のルールから次へ）
+              setMessage(app.role === "host" ?
+                "結果を閉じました。もう一戦するときは、上の「対局の準備」でルールを押すと、次の準備に移ります。" :
+                "結果を閉じました。ホストが次の対局を準備すると、ここで続けられます。");
             }
           },
           onResize: render
