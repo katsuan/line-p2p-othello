@@ -106,7 +106,7 @@
 .swap-arrow {
   font-size: 0.92rem;
   line-height: 1;
-  color: #6c776f;
+  color: var(--ls-subtext); /* 明るい表示・暗い表示とも、背景との差 4.5 以上（読みやすさ） */
   transition: transform 140ms ease;
 }
 
