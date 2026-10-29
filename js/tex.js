@@ -93,6 +93,7 @@
   }
 
   window.OthelloTex = {
+    escapeHtml: escapeHtml,
     load: load,
     isReady: isReady,
     onReady: onReady,

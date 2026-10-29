@@ -10,11 +10,9 @@
     }
   }
 
-  // 文字を HTML に入れても、タグとして動かない形にする
+  // 文字を HTML に入れても、タグとして動かない形にする（js/tex.js と同じものを使う）
   function esc(value) {
-    return String(value).replace(/[&<>"']/g, function (ch) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[ch];
-    });
+    return window.OthelloTex.escapeHtml(value);
   }
 
   // 要素を出す・隠す
