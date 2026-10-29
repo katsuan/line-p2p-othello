@@ -84,6 +84,14 @@
   background: #edf0ea;
   color: #223127;
   flex: 0 0 auto;
+  position: relative;
+}
+
+/* 見た目はそのまま、押せる範囲だけ高さ 44px ほどに広げる */
+.swap-color-button::after {
+  content: "";
+  position: absolute;
+  inset: -5px 0;
 }
 
 .swap-disc {
